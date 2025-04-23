@@ -8,13 +8,12 @@ local M = {}
 ---@field z_index integer Z-index of the window
 ---@field width integer
 ---@field height integer
-
 ---@field row integer     -- Absolute screen row (1-based)
 ---@field col integer     -- Absolute screen col (1-based)
 
 ---@type OverlookStackItem[]
-
 M.stack = {}
+
 ---@type integer | nil
 M.original_win_id = nil
 
@@ -26,7 +25,6 @@ end
 
 ---Returns the info for the top popup without removing it.
 ---@return OverlookStackItem | nil
-
 function M.peek()
   if M.size() == 0 then
     return nil
@@ -35,7 +33,7 @@ function M.peek()
 end
 
 ---Finds a popup's info and index in the stack by buffer ID.
----@param buf_id integer
+---@param win_id integer
 ---@return OverlookStackItem | nil, integer | nil @ Returns item info and its 1-based index.
 function M.find_by_win(win_id) -- Renamed from find_by_buf
   for i = #M.stack, 1, -1 do
