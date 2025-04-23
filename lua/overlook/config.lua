@@ -1,11 +1,41 @@
 local M = {}
 
--- Default configuration options for overlook.nvim
+---@alias OverlookBorderStyle
+---| "none"
+---| "single"
+---| "double"
+---| "rounded"
+---| "solid"
+---| "shadow"
+
+---@class OverlookUiOptions
+---@field border OverlookBorderStyle Border style for popups.
+---@field z_index_base integer Base z-index for the first popup.
+---@field default_width integer Default maximum width for the *first* popup.
+---@field default_height integer Default maximum height for the *first* popup.
+---@field row_offset integer Initial row offset relative to the cursor for the *first* popup.
+---@field col_offset integer Initial column offset relative to the cursor for the *first* popup.
+---@field stack_row_offset integer Vertical offset for subsequent stacked popups.
+---@field stack_col_offset integer Column offset for subsequent stacked popups.
+---@field width_decrement integer Amount by which the width decreases for each subsequent popup.
+---@field height_decrement integer Amount by which the height decreases for each subsequent popup.
+---@field min_width integer Minimum allowed width for any popup window.
+---@field min_height integer Minimum allowed height for any popup window.
+
+---@class OverlookAdapterOptions
+---@field marks? table Configuration for the 'marks' adapter.
+-- ---@field lsp? table Placeholder for future LSP adapter config
+
+---@class OverlookOptions
+---@field ui OverlookUiOptions UI settings for the popup windows.
+---@field adapters OverlookAdapterOptions Adapter-specific configurations.
+
+---Default configuration options for overlook.nvim
+---@type OverlookOptions
 M.options = {
   -- UI settings for the popup windows
   ui = {
     -- Border style for popups. Accepts same values as nvim_open_win's 'border' option
-    -- (e.g., 'none', 'single', 'double', 'rounded', 'solid', 'shadow').
     border = "rounded",
 
     -- Base z-index for the first popup. Subsequent popups increment from here.
@@ -16,21 +46,16 @@ M.options = {
     default_width = 80,
 
     -- Default maximum height for the *first* popup. Actual size also depends on content and editor size.
-
     default_height = 15,
 
     -- Initial row offset relative to the cursor for the *first* popup.
-    -- 1 means one row below the cursor. Negative values mean above.
-    row_offset = 1,
+    row_offset = 0,
     -- Initial column offset relative to the cursor for the *first* popup.
-    -- 0 means starting at the cursor column.
     col_offset = 0,
 
-    -- Row offset for subsequent stacked popups relative to the previous popup's top-left corner.
-    -- 1 means the next popup starts 1 row below the previous one.
+    -- Vertical offset for subsequent stacked popups relative to the previous popup's top border.
     stack_row_offset = 0,
     -- Column offset for subsequent stacked popups relative to the previous popup's top-left corner.
-    -- 1 means the next popup starts 1 column to the right of the previous one.
     stack_col_offset = 0,
 
     -- Amount by which the width decreases for each subsequent popup in the stack.
@@ -45,16 +70,10 @@ M.options = {
   },
 
   -- Adapter-specific configurations
-
   adapters = {
     -- Configuration for the 'marks' adapter
-    marks = {
-      -- Filetype to potentially set (less relevant now we show the actual buffer,
-      -- but could be used by future adapters creating scratch buffers).
-      filetype = "markdown",
-    },
+    marks = {},
     -- lsp = {}, -- Placeholder for future LSP adapter config
-    -- other_adapter = {}, -- Placeholder
   },
 }
 
@@ -74,6 +93,7 @@ end
 -- Returns the currently active configuration table.
 -- Primarily for internal use by other plugin modules via require('overlook.config').get()
 -- or directly via require('overlook.config').options if setup timing is guaranteed.
+---@return OverlookOptions
 function M.get()
   return M.options
 end

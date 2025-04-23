@@ -33,8 +33,9 @@ function M.peek(mark_char)
 
   -- Basic validation checks
   if not api.nvim_buf_is_loaded(bufnum) then
-    vim.notify("Overlook: Buffer for mark '" .. mark_char .. "' (" .. bufnum .. ") is not loaded.", vim.log.levels.WARN)
-    return -- Or attempt to load? For MVP, warn and exit.
+    -- Attempt to load it? Or just return?
+    -- For now, just return, assuming it should be loaded.
+    return
   end
   if not api.nvim_buf_is_valid(bufnum) then
     vim.notify(

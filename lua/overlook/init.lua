@@ -19,7 +19,6 @@ function M.peek_mark()
     end
     -- Handle empty input
     if input == "" then
-      vim.notify("Overlook: No mark character entered.", vim.log.levels.WARN)
       return
     end
     -- Validate input length
@@ -40,7 +39,6 @@ function M.setup(opts)
   -- vim.api.nvim_create_user_command('OverlookMark', M.peek_mark, {
   --   desc = "Overlook: Peek a mark using stackable popups",
   -- })
-  vim.notify("Overlook initialized.", vim.log.levels.INFO) -- Confirmation
 end
 
 return M

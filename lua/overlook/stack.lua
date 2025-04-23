@@ -67,7 +67,6 @@ function M.handle_win_close(closed_win_id) -- Renamed from handle_close
 
   local _, index = M.find_by_win(closed_win_id) -- Use find_by_win
   if not index then
-    vim.notify(string.format("Overlook: Win %d not found in stack during close.", closed_win_id), vim.log.levels.TRACE)
     return
   end
   table.remove(M.stack, index)
@@ -76,23 +75,36 @@ function M.handle_win_close(closed_win_id) -- Renamed from handle_close
   if M.size() > 0 then
     local next_top_popup = M.top()
     -- Check validity *before* focusing
-    if next_top_popup and api.nvim_win_is_valid(next_top_popup.win_id) then
-      vim.notify(string.format("Overlook: Focusing next popup win %d", next_top_popup.win_id), vim.log.levels.DEBUG)
-      api.nvim_set_current_win(next_top_popup.win_id)
+    if next_top_popup then
+      if api.nvim_win_is_valid(next_top_popup.win_id) then
+        api.nvim_set_current_win(next_top_popup.win_id)
+      else
+        -- This case shouldn't happen if logic is correct, but handle defensively
+        M.close_all(true) -- Force close remaining and reset
+      end
     else
-      vim.notify(
-        "Overlook Warn: Next popup window is invalid after close. Stack might be inconsistent. Attempting recovery.",
-        vim.log.levels.WARN
-      )
-      M.close_all(true) -- Force close remaining and reset
+      -- Stack is now empty, try focusing the original window
+      if M.original_win_id and api.nvim_win_is_valid(M.original_win_id) then
+        api.nvim_set_current_win(M.original_win_id)
+      else
+        -- Fallback: focus any valid window (Neovim might do this anyway)
+        local wins = api.nvim_list_wins()
+        if wins and wins[1] then
+          api.nvim_set_current_win(wins[1])
+        end
+      end
+      M.original_win_id = nil
     end
   else
-    vim.notify("Overlook: Stack empty.", vim.log.levels.DEBUG)
+    -- Stack is now empty, try focusing the original window
     if M.original_win_id and api.nvim_win_is_valid(M.original_win_id) then
-      vim.notify(string.format("Overlook: Focusing original win %d", M.original_win_id), vim.log.levels.DEBUG)
       api.nvim_set_current_win(M.original_win_id)
     else
-      vim.notify("Overlook Warn: Original window invalid or not set.", vim.log.levels.WARN)
+      -- Fallback: focus any valid window (Neovim might do this anyway)
+      local wins = api.nvim_list_wins()
+      if wins and wins[1] then
+        api.nvim_set_current_win(wins[1])
+      end
     end
     M.original_win_id = nil
   end
@@ -102,7 +114,6 @@ end
 --- Closes all overlook popups gracefully.
 ---@param force_close? boolean If true, uses force flag when closing windows.
 function M.close_all(force_close)
-  vim.notify("Overlook: Closing all popups.", vim.log.levels.DEBUG)
   local original_win_to_restore = M.original_win_id
   local stack_copy = vim.deepcopy(M.stack) -- Copy stack to iterate safely
 
@@ -110,10 +121,6 @@ function M.close_all(force_close)
   for i = #stack_copy, 1, -1 do
     local popup_info = stack_copy[i]
     if popup_info and api.nvim_win_is_valid(popup_info.win_id) then
-      vim.notify(
-        string.format("Overlook: Closing win %d (buf %d)", popup_info.win_id, popup_info.buf_id),
-        vim.log.levels.DEBUG
-      )
       -- Closing the window *should* trigger WinClosed -> handle_win_close -> stack removal
       -- We rely on handle_win_close triggered by the *last* window close to restore original focus
       api.nvim_win_close(popup_info.win_id, force_close or false)
@@ -122,7 +129,6 @@ function M.close_all(force_close)
 
   -- Simple safeguard if handle_win_close failed to clear everything
   if M.size() > 0 then
-    vim.notify("Overlook Warn: Stack not cleared after close_all loop. Force clearing.", vim.log.levels.WARN)
     M.stack = {}
   end
   -- Restore focus explicitly if stack is now empty and original exists (in case last handle_win_close failed)
@@ -130,7 +136,6 @@ function M.close_all(force_close)
     if original_win_to_restore and api.nvim_win_is_valid(original_win_to_restore) then
       api.nvim_set_current_win(original_win_to_restore)
       M.original_win_id = nil -- Ensure it's cleared after manual restore
-      vim.notify("Overlook: Manually restored focus in close_all.", vim.log.levels.DEBUG)
     end
   end
 end
