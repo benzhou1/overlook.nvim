@@ -114,7 +114,7 @@ function M.create_popup(opts)
     ) -- DEBUG Updated Log
   else
     -- Subsequent popups
-    local prev = stack().peek()
+    local prev = stack().top()
 
     if not prev or prev.width == nil or prev.height == nil or prev.row == nil or prev.col == nil then
       vim.notify("Overlook Internal Error: Invalid previous popup state.", vim.log.levels.ERROR)
@@ -159,6 +159,11 @@ function M.create_popup(opts)
   win_config.border = border_definitions.single -- FORCE simple single border
   win_config.title = opts.title or "default title"
   win_config.title_pos = "center"
+
+  local original_win_id = nil
+  if stack().size() == 0 then
+    original_win_id = vim.api.nvim_get_current_win()
+  end
 
   vim.notify("Overlook Debug: Using FORCED simple border.", vim.log.levels.WARN) -- DEBUG
   vim.notify("Overlook Debug: Win Config Before Open: " .. vim.inspect(win_config), vim.log.levels.DEBUG) -- DEBUG
@@ -221,6 +226,7 @@ function M.create_popup(opts)
     height = height,
     row = row,
     col = col_abs,
+    original_win_id = original_win_id,
   }
 
   -- 6. Setup WinClosed Autocommand

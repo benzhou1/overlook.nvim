@@ -10,6 +10,7 @@ local M = {}
 ---@field height integer
 ---@field row integer     -- Absolute screen row (1-based)
 ---@field col integer     -- Absolute screen col (1-based)
+---@field original_win_id integer? -- Original window ID (if applicable)
 
 ---@type OverlookStackItem[]
 M.stack = {}
@@ -25,7 +26,7 @@ end
 
 ---Returns the info for the top popup without removing it.
 ---@return OverlookStackItem | nil
-function M.peek()
+function M.top()
   if M.size() == 0 then
     return nil
   end
@@ -48,8 +49,8 @@ end
 ---Pushes popup info onto the stack and stores original wid if needed.
 ---@param popup_info OverlookStackItem
 function M.push(popup_info)
-  if M.size() == 0 then
-    M.original_win_id = api.nvim_get_current_win()
+  if M.size() == 0 and popup_info.original_win_id then
+    M.original_win_id = popup_info.original_win_id
   end
   table.insert(M.stack, popup_info)
 end
@@ -58,31 +59,22 @@ end
 --- Triggered by WinClosed autocommand (via ui.lua).
 ---@param closed_win_id integer
 function M.handle_win_close(closed_win_id) -- Renamed from handle_close
-  vim.notify(string.format("Overlook: Handling close for win %d", closed_win_id), vim.log.levels.DEBUG)
-
-  local _, index = M.find_by_win(closed_win_id) -- Use find_by_win
-
-  if not index then
-    -- This happens normally for non-overlook windows, ignore.
-    -- vim.notify(string.format("Overlook: Win %d not found in stack during close.", closed_win_id), vim.log.levels.TRACE)
-    return
+  -- HACK: go extra step to restore focus to the original window
+  -- Better if i can override the WinClosed beharior, such as the win_id to go after close
+  if M.original_win_id and api.nvim_win_is_valid(M.original_win_id) then
+    api.nvim_set_current_win(M.original_win_id)
   end
 
-  -- Remove the closed popup info from the stack
-  local closed_info = table.remove(M.stack, index)
-  vim.notify(
-    string.format(
-      "Overlook: Removed win %d (buf %d) from stack. New size: %d",
-      closed_win_id,
-      closed_info.buf_id,
-      M.size()
-    ),
-    vim.log.levels.DEBUG
-  )
+  local _, index = M.find_by_win(closed_win_id) -- Use find_by_win
+  if not index then
+    vim.notify(string.format("Overlook: Win %d not found in stack during close.", closed_win_id), vim.log.levels.TRACE)
+    return
+  end
+  table.remove(M.stack, index)
 
   -- Restore focus logic (same logic as before, focuses next stack item or original window)
   if M.size() > 0 then
-    local next_top_popup = M.peek()
+    local next_top_popup = M.top()
     -- Check validity *before* focusing
     if next_top_popup and api.nvim_win_is_valid(next_top_popup.win_id) then
       vim.notify(string.format("Overlook: Focusing next popup win %d", next_top_popup.win_id), vim.log.levels.DEBUG)
