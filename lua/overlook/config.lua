@@ -11,8 +11,6 @@ local M = {}
 ---@class OverlookUiOptions
 ---@field border OverlookBorderStyle Border style for popups.
 ---@field z_index_base integer Base z-index for the first popup.
----@field default_width integer Default maximum width for the *first* popup.
----@field default_height integer Default maximum height for the *first* popup.
 ---@field row_offset integer Initial row offset relative to the cursor for the *first* popup.
 ---@field col_offset integer Initial column offset relative to the cursor for the *first* popup.
 ---@field stack_row_offset integer Vertical offset for subsequent stacked popups.
@@ -21,6 +19,7 @@ local M = {}
 ---@field height_decrement integer Amount by which the height decreases for each subsequent popup.
 ---@field min_width integer Minimum allowed width for any popup window.
 ---@field min_height integer Minimum allowed height for any popup window.
+---@field size_ratio number Default size ratio (0.0 to 1.0) used to calculate initial size.
 
 ---@class OverlookAdapterOptions
 ---@field marks? table Configuration for the 'marks' adapter.
@@ -42,12 +41,6 @@ M.options = {
     -- Higher values appear visually on top. Should be high enough to be above normal floats.
     z_index_base = 100,
 
-    -- Default maximum width for the *first* popup. Actual size also depends on content and editor size.
-    default_width = 80,
-
-    -- Default maximum height for the *first* popup. Actual size also depends on content and editor size.
-    default_height = 15,
-
     -- Initial row offset relative to the cursor for the *first* popup.
     row_offset = 0,
     -- Initial column offset relative to the cursor for the *first* popup.
@@ -67,6 +60,9 @@ M.options = {
     min_width = 10,
     -- Minimum allowed height for any popup window (must be >= 3 for border+title+content).
     min_height = 3,
+
+    -- Default size ratio (0.0 to 1.0) used to calculate initial size.
+    size_ratio = 0.6,
   },
 
   -- Adapter-specific configurations

@@ -64,16 +64,74 @@ function M.create_popup(opts)
 
     win_config.relative = "win"
     win_config.win = current_win_id
-    -- Place the popup's top edge on the same screen row as the cursor (0-based offset)
-    win_config.row = cursor_relative_screen_row + ui_opts.row_offset
-    -- Align the popup's left edge with the cursor's screen column (0-based offset)
     win_config.col = cursor_relative_screen_col + ui_opts.col_offset
 
-    local max_editor_height =
-      math.max(1, api.nvim_get_option_value("lines", {}) - api.nvim_get_option_value("cmdheight", {}) - 2)
-    local max_editor_width = math.max(1, api.nvim_get_option_value("columns", {}) - 4)
-    height = math.max(ui_opts.min_height, math.min(max_editor_height, ui_opts.default_height))
-    width = math.max(ui_opts.min_width, math.min(max_editor_width, ui_opts.default_width))
+    -- Calculate max editor dimensions accurately
+    local lines = api.nvim_get_option_value("lines", {})
+    local cmdheight = api.nvim_get_option_value("cmdheight", {})
+    local laststatus = api.nvim_get_option_value("laststatus", {})
+    local statusline_height = (laststatus == 2 or laststatus == 3) and 1 or 0
+    local max_editor_height = math.max(1, lines - cmdheight - statusline_height)
+    local max_editor_width = math.max(1, api.nvim_get_option_value("columns", {})) -- Assume full width initially
+
+    -- Adjust available space/fittable size calculation based on accurate max_editor_height
+    local place_above = cursor_relative_screen_row > max_editor_height / 2
+
+    -- 2. Calculate Available Space based on placement
+    local screen_space_above = cursor_relative_screen_row
+    local screen_space_below = max_editor_height - cursor_relative_screen_row
+    -- Subtract 2 from width for potential borders/padding
+    local screen_space_right = max_editor_width - cursor_relative_screen_col - 2
+    local border_vertical_overhead = 2 -- Assume 1 row top border, 1 row bottom border
+    local border_horizontal_overhead = 2 -- Assume 1 col left, 1 col right
+
+    local max_fittable_content_height
+    if place_above then
+      max_fittable_content_height = math.max(0, screen_space_above - border_vertical_overhead)
+    else
+      max_fittable_content_height = math.max(0, screen_space_below - border_vertical_overhead)
+    end
+    local max_fittable_content_width = math.max(0, screen_space_right - border_horizontal_overhead)
+
+    -- 3. Calculate Target Dimensions (Content Size)
+    -- Always calculate based on size_ratio now
+    local target_height
+    target_height = math.min(math.floor(max_editor_height * ui_opts.size_ratio), max_fittable_content_height)
+
+    local target_width
+    target_width = math.min(math.floor(max_editor_width * ui_opts.size_ratio), max_fittable_content_width)
+
+    -- 4. Apply Constraints (min/max editor size) - Apply to Content Size
+    height = math.min(max_fittable_content_height, math.max(ui_opts.min_height, target_height))
+    width = math.min(max_fittable_content_width, math.max(ui_opts.min_width, target_width))
+
+    -- 5. Set Final Position based on placement and calculated size
+    win_config.col = cursor_relative_screen_col + ui_opts.col_offset
+    if place_above then
+      -- Place window *above* cursor line, adjusted by offset
+      -- Revert to using 'height' and keep -1 adjustment
+      local initial_target_row = screen_space_above - height - border_vertical_overhead - ui_opts.row_offset - 1
+
+      if initial_target_row < 0 then
+        -- Window is too tall for the space above, reduce height and place at top
+        local overflow = -initial_target_row
+        height = height - overflow
+        height = math.max(height, ui_opts.min_height)
+        -- Revert final_win_height logic
+        win_config.row = 0
+      else
+        -- Window fits, place at calculated row
+        win_config.row = initial_target_row
+      end
+    else
+      -- Place window *below* cursor line, adjusted by offset
+      -- Remove +2 row adjustment
+      win_config.row = cursor_relative_screen_row + ui_opts.row_offset
+
+      -- Make height one row smaller, respecting min_height
+      height = height - 1
+      height = math.max(height, ui_opts.min_height)
+    end
 
     win_config.width = width
     win_config.height = height
