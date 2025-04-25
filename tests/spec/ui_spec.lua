@@ -350,11 +350,101 @@ describe("overlook.ui", function()
     assert.are.same({ 1000 }, set_current_win_calls) -- Should restore to original window (mocked as 1000)
   end)
 
-  -- TODO: Add more tests:
-  -- - Test placement logic (above/below)
-  -- - Test subsequent popup positioning (stacking)
-  -- - Test behavior when buffer is invalid
-  -- - Test border types
-  -- - Test edge cases (small window sizes, hitting min/max dimensions)
-  -- - Test error handling for nvim_open_win failure
+  it("should adjust stacking row offset if winbar is enabled", function()
+    -- Arrange: Simulate one existing popup
+    local prev_popup_info = {
+      win_id = 999,
+      buf_id = 1,
+      z_index = 50,
+      width = 60,
+      height = 15,
+      row = 7,
+      col = 12,
+      original_win_id = 1000,
+    }
+    package.loaded["overlook.stack"].push(prev_popup_info)
+    -- Mock winbar to be enabled
+    orig_api.nvim_get_option_value = vim.api.nvim_get_option_value
+    vim.api.nvim_get_option_value = function(name, _)
+      if name == "winbar" then
+        return "%{1*Winbar%*}"
+      end -- Enable winbar
+      -- Provide other defaults needed by the function
+      if name == "lines" then
+        return 40
+      end
+      if name == "columns" then
+        return 100
+      end
+      if name == "cmdheight" then
+        return 1
+      end
+      if name == "laststatus" then
+        return 2
+      end
+
+      return nil
+    end
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    -- Expected row: stack_row_offset(1) - winbar(1) = 0
+    assert.are.equal(0, win_config.row)
+  end)
+
+  it("should handle nvim_win_get_config failure", function()
+    -- Arrange: Make nvim_win_get_config return nil
+    orig_api.nvim_win_get_config = vim.api.nvim_win_get_config
+    vim.api.nvim_win_get_config = function(_)
+      return nil
+    end
+    -- Track close calls
+    orig_api.nvim_win_close = vim.api.nvim_win_close
+    local closed_windows = {}
+    vim.api.nvim_win_close = function(win_id, force)
+      table.insert(closed_windows, { id = win_id, force = force })
+    end
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_nil(result)
+    assert.are.same({ { id = 1001, force = true } }, closed_windows) -- Should close the opened window
+  end)
+
+  it("should use the provided title option", function()
+    -- Arrange
+    local custom_title = "My Custom Popup Title"
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1, title = custom_title }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    assert.are.equal(custom_title, mock_call_args.nvim_open_win.config.title)
+  end)
+
+  it("should clamp stacked dimensions at minimums", function()
+    -- Arrange: Simulate a small previous popup
+    local prev_popup_info = {
+      win_id = 999,
+      buf_id = 1,
+      z_index = 50,
+      width = 11, -- width_decrement=2, min_width=10 -> next width should be max(10, 11-2)=10
+      height = 6, -- height_decrement=1, min_height=5 -> next height should be max(5, 6-1)=5
+      row = 7,
+      col = 12,
+      original_win_id = 1000,
+    }
+    package.loaded["overlook.stack"].push(prev_popup_info)
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    assert.are.equal(10 + 1, win_config.width) -- Clamp at min_width (10) + 1 border
+    assert.are.equal(5, win_config.height) -- Clamp at min_height (5)
+  end)
 end)
