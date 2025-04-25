@@ -1,7 +1,7 @@
 .PHONY: test deps
 
 test: deps
-	nvim --headless --noplugin -u tests/minimal_init.lua -l tests/run_tests.lua
+	nvim --headless --noplugin -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/spec/ { minimal_init = './tests/minimal_init.lua' }"
 
 deps: plenary.nvim
 

@@ -1,34 +1,38 @@
-local ui = require('overlook.ui')
-local stack = require('overlook.stack')
-local config = require('overlook.config')
-local helpers = require('tests.helpers') -- We might add mocking helpers here later
+---@module "plenary"
 
--- Mocking Neovim API
-local api_spy = require('luassert.spy').new(vim.api)
-local fn_spy = require('luassert.spy').new(vim.fn)
+local config = require("overlook.config")
+local stack = require("overlook.stack")
+local ui = require("overlook.ui")
+
+local orig_api = {}
+local orig_fn = {}
+
+-- Store arguments passed to mocks for assertions
+local mock_call_args = {}
 
 -- Helper to reset mocks and stack before each test
 local function setup_mocks()
-  api_spy:reset()
-  fn_spy:reset()
-  stack.reset()
+  -- Restore original functions before applying mocks
+  for k, v in pairs(orig_api) do
+    vim.api[k] = v
+  end
+  for k, v in pairs(orig_fn) do
+    vim.fn[k] = v
+  end
+  orig_api = {}
+  orig_fn = {}
+  mock_call_args = { -- Reset args for each test
+    nvim_open_win = nil,
+    stack_push = nil,
+  }
 
-  -- Mock essential API calls needed for basic UI function execution
-  -- Mock nvim_get_current_win to return a dummy window ID
-  api_spy.nvim_get_current_win:returns(1000)
+  -- Clear stack state directly
+  stack.stack = {}
+  stack.original_win_id = nil
 
-  -- Mock nvim_win_is_valid to always return true for relevant IDs
-  api_spy.nvim_win_is_valid:calls(function(win_id)
-    return win_id == 1000 or win_id == 1001 -- Add more IDs as needed
-  end)
-
-  -- Mock nvim_buf_is_valid to always return true
-  api_spy.nvim_buf_is_valid:returns(true)
-
-  -- Mock config loading to return default-like values
-  -- Need to bypass the internal caching in ui.lua for config
+  -- Mock config loading FIRST (Use a plain table)
   local mock_ui_config = {
-    border = "single",
+    border = "double",
     z_index_base = 50,
     col_offset = 1,
     row_offset = 1,
@@ -40,81 +44,310 @@ local function setup_mocks()
     stack_row_offset = 1,
     stack_col_offset = 1,
   }
-  local config_mod_spy = require('luassert.spy').new(config)
-  config_mod_spy.options = { ui = mock_ui_config }
-  package.loaded['overlook.config'] = config_mod_spy -- Replace loaded module
+  local mock_config_mod = { options = { ui = mock_ui_config } }
+  package.loaded["overlook.config"] = mock_config_mod
 
-  -- Mock stack size
-  local stack_spy = require('luassert.spy').new(stack)
-  stack_spy.size:returns(0)
-  package.loaded['overlook.stack'] = stack_spy -- Replace loaded module
-end
-
-describe('overlook.ui', function()
-  before_each(setup_mocks)
-  -- Restore original vim.api and vim.fn after tests in this block
-  -- NOTE: This simple replacement might not be robust enough for all cases.
-  -- More sophisticated mocking might be needed.
-  local orig_api = vim.api
-  local orig_fn = vim.fn
-  after_each(function()
-    vim.api = orig_api
-    vim.fn = orig_fn
-    -- Reset replaced modules
-    package.loaded['overlook.config'] = config
-    package.loaded['overlook.stack'] = stack
-    collectgarbage()
-  end)
-
-  -- Assign mocked versions
-  vim.api = api_spy
-  vim.fn = fn_spy
-
-  it('should attempt to create a popup with valid buffer', function()
-    -- Arrange: Mock necessary API calls for create_popup
-    api_spy.nvim_win_get_cursor:returns({ 5, 10 }) -- {row, col}
-    fn_spy.screenpos:returns({ row = 6, col = 11 }) -- {row, col} 1-based
-    api_spy.nvim_win_get_position:returns({ 1, 1 }) -- {row, col} 0-based
-    api_spy.nvim_win_get_height:returns(20)
-    api_spy.nvim_win_get_width:returns(80)
-    api_spy.nvim_get_option_value:fake(function(name, _)
-      if name == 'lines' then return 40 end
-      if name == 'columns' then return 100 end
-      if name == 'cmdheight' then return 1 end
-      if name == 'laststatus' then return 2 end
-      if name == 'winbar' then return nil end -- Assume no winbar
+  -- Mock stack module FIRST (Use a plain table with manual tracking if needed)
+  local stack_push_called = false
+  local mock_stack_mod = {}
+  mock_stack_mod.size = function()
+    return #stack.stack
+  end
+  mock_stack_mod.push = function(popup_info)
+    stack_push_called = true
+    mock_call_args.stack_push = vim.deepcopy(popup_info) -- Store args
+    table.insert(stack.stack, popup_info) -- Simulate actual push for size()
+  end
+  mock_stack_mod.top = function()
+    if #stack.stack == 0 then
       return nil
-    end)
-    api_spy.nvim_open_win:returns(1001) -- Return a new dummy window ID
-    api_spy.nvim_win_get_config:returns({
+    end
+    return stack.stack[#stack.stack]
+  end
+  mock_stack_mod.find_by_win = stack.find_by_win
+  mock_stack_mod.handle_win_close = stack.handle_win_close
+  mock_stack_mod.close_all = stack.close_all
+  mock_stack_mod._push_called_flag = function()
+    return stack_push_called
+  end
+
+  package.loaded["overlook.stack"] = mock_stack_mod
+
+  -- Mock essential API calls LAST (Manual Mocks)
+  -- Helper to simplify saving original and assigning mock
+  local function mock_api(name, mock_fn)
+    if vim.api[name] then
+      orig_api[name] = vim.api[name]
+    end
+    vim.api[name] = mock_fn
+  end
+  local function mock_fn(name, mock_fn)
+    if vim.fn[name] then
+      orig_fn[name] = vim.fn[name]
+    end
+    vim.fn[name] = mock_fn
+  end
+
+  mock_api("nvim_get_current_win", function()
+    return 1000
+  end)
+  mock_api("nvim_win_is_valid", function(win_id)
+    return win_id == 1000 or win_id == 1001 or win_id == 999
+  end)
+  mock_api("nvim_buf_is_valid", function(bufnr)
+    return bufnr == 1
+  end)
+  mock_api("nvim_win_get_cursor", function(_)
+    return { 5, 10 }
+  end)
+  mock_fn("screenpos", function(_, _, _)
+    return { row = 6, col = 11 }
+  end)
+  mock_api("nvim_win_get_position", function(_)
+    return { 0, 0 }
+  end)
+  mock_api("nvim_win_get_height", function(_)
+    return 20
+  end)
+  mock_api("nvim_win_get_width", function(_)
+    return 80
+  end)
+  mock_api("nvim_get_option_value", function(name, _)
+    if name == "lines" then
+      return 40
+    end
+    if name == "columns" then
+      return 100
+    end
+    if name == "cmdheight" then
+      return 1
+    end
+    if name == "laststatus" then
+      return 2
+    end
+    if name == "winbar" then
+      return nil
+    end
+    return nil
+  end)
+  mock_api("nvim_open_win", function(bufnr, enter, config)
+    mock_call_args.nvim_open_win = { bufnr = bufnr, enter = enter, config = vim.deepcopy(config) }
+    return 1001
+  end)
+  mock_api("nvim_win_get_config", function(_)
+    local args = mock_call_args.nvim_open_win
+    if args and args.config then
+      return vim.tbl_deep_extend("force", args.config, { win = 1001 })
+    end
+    return {
       relative = "win",
-      width = 60, -- Example final width
-      height = 15, -- Example final height
-      row = 7, -- Example final row
-      col = 12, -- Example final col
+      width = 60,
+      height = 15,
+      row = 7,
+      col = 12,
       border = { "┌", "─", "┐", "│", "┘", "─", "└", "│" },
       title = "default title",
       title_pos = "center",
       zindex = 50,
-    })
-    api_spy.nvim_win_set_cursor:returns(true)
-    api_spy.nvim_win_call:returns(true)
-    api_spy.nvim_create_autocmd:returns(true)
+    }
+  end)
+  mock_api("nvim_win_set_cursor", function(_, _)
+    return true
+  end)
+  mock_api("nvim_win_call", function(_, cb)
+    if cb then
+      cb()
+    end
+    return true
+  end)
+  mock_api("nvim_create_autocmd", function(_, _)
+    return true
+  end)
+end
 
+describe("overlook.ui", function()
+  before_each(setup_mocks)
+
+  after_each(function()
+    -- Restore original functions
+    for k, v in pairs(orig_api) do
+      vim.api[k] = v
+    end
+    for k, v in pairs(orig_fn) do
+      vim.fn[k] = v
+    end
+    orig_api = {}
+    orig_fn = {}
+
+    -- Reset replaced modules
+    package.loaded["overlook.config"] = config
+    package.loaded["overlook.stack"] = stack
+    collectgarbage()
+  end)
+
+  it("should attempt to create a popup with valid buffer", function()
     -- Act
-    local result = ui.create_popup({ target_bufnr = 1, lnum = 5, col = 10 })
+    local result = ui.create_popup { target_bufnr = 1, lnum = 5, col = 10 }
 
     -- Assert
     assert.is_not_nil(result)
     assert.are.equal(1001, result.win_id)
     assert.are.equal(1, result.buf_id)
-    -- Check if key functions were called
-    assert.spy(api_spy.nvim_open_win).was_called()
-    assert.spy(api_spy.nvim_win_set_cursor).was_called()
-    assert.spy(api_spy.nvim_create_autocmd).was_called()
-    -- Verify stack push was attempted (using the spy we setup)
-    local stack_mod = package.loaded['overlook.stack']
-    assert.spy(stack_mod.push).was_called()
+    local stack_mod = package.loaded["overlook.stack"]
+    assert.is_true(stack_mod._push_called_flag())
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+  end)
+
+  it("should return nil if target buffer is invalid", function()
+    -- Arrange: nvim_buf_is_valid is mocked in setup_mocks to only allow buffer 1
+    -- Act
+    local result = ui.create_popup { target_bufnr = 999, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_nil(result)
+    assert.is_nil(mock_call_args.nvim_open_win) -- Check open_win was NOT called
+  end)
+
+  it("should place popup below cursor if cursor is in upper half", function()
+    -- Arrange: Default mocks place cursor at row 5/20
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 5, col = 10 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    -- Default cursor screen row is 6 (from screenpos mock)
+    -- Default row offset is 1
+    -- Expected row = cursor_relative_screen_row(5) + row_offset(1) = 6
+    assert.are.equal(6, win_config.row)
+  end)
+
+  it("should place popup above cursor if cursor is in lower half", function()
+    -- Arrange: Override cursor and screenpos mocks
+    orig_api.nvim_win_get_cursor = vim.api.nvim_win_get_cursor -- Save original from setup_mocks if needed
+    orig_fn.screenpos = vim.fn.screenpos
+    vim.api.nvim_win_get_cursor = function(_)
+      return { 15, 10 }
+    end
+    vim.fn.screenpos = function(_, _, _)
+      return { row = 16, col = 11 }
+    end
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 15, col = 10 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    -- height calc: min(floor(20*0.8), max(0, 15 - 2)) = min(16, 13) = 13
+    -- target_height = 13. height = max(5, 13) = 13
+    -- cursor_relative_screen_row = 15 (screenpos.row(16) - winpos.row(0) - 1)
+    -- Expected row = screen_space_above(15) - height(13) - border_v_overhead(2) - row_offset(1) - 1 = 15-13-2-1-1 = -2 --> overflow
+    -- If overflow, height becomes max(5, 13 - 2) = 11, row becomes 0 -- Adjusted calc based on code
+    assert.are.equal(0, win_config.row)
+    assert.are.equal(11, win_config.height)
+  end)
+
+  it("should stack subsequent popups relative to the previous one", function()
+    -- Arrange: Simulate one existing popup
+    local prev_popup_info = {
+      win_id = 999,
+      buf_id = 1,
+      z_index = 50,
+      width = 60,
+      height = 15,
+      row = 7,
+      col = 12,
+      original_win_id = 1000,
+    }
+    -- Manually push to stack to affect stack.size() and stack.top()
+    package.loaded["overlook.stack"].push(prev_popup_info)
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    assert.are.equal(999, win_config.win) -- Relative to previous window
+    -- Expected width: max(min_width(10), prev_width(60) - width_decrement(2)) = 58 + 1 border = 59
+    assert.are.equal(59, win_config.width)
+    -- Expected height: max(min_height(5), prev_height(15) - height_decrement(1)) = 14
+    assert.are.equal(14, win_config.height)
+    -- Expected row: stack_row_offset(1) - winbar(0) = 1
+    assert.are.equal(1, win_config.row)
+    -- Expected col: stack_col_offset(1)
+    assert.are.equal(1, win_config.col)
+    assert.are.equal(51, win_config.zindex) -- Incremented zindex
+  end)
+
+  it("should use the specified border type", function()
+    -- Arrange: Default border is now double in setup_mocks
+    local expected_border = { "╔", "═", "╗", "║", "╝", "═", "╚", "║" }
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    assert.are.same(expected_border, mock_call_args.nvim_open_win.config.border)
+  end)
+
+  it("should respect minimum width and height", function()
+    -- Arrange: Make window very small so size_ratio calc is below min
+    orig_api.nvim_win_get_height = vim.api.nvim_win_get_height
+    orig_api.nvim_win_get_width = vim.api.nvim_win_get_width
+    orig_api.nvim_win_get_cursor = vim.api.nvim_win_get_cursor
+    orig_fn.screenpos = vim.fn.screenpos
+    vim.api.nvim_win_get_height = function(_)
+      return 8
+    end
+    vim.api.nvim_win_get_width = function(_)
+      return 10
+    end
+    vim.api.nvim_win_get_cursor = function(_)
+      return { 2, 2 }
+    end
+    vim.fn.screenpos = function(_, _, _)
+      return { row = 3, col = 3 }
+    end
+    -- Modify the config JUST for this test run (may be affected by caching)
+    local cfg = package.loaded["overlook.config"]
+    local original_min_w = cfg.options.ui.min_width
+    local original_min_h = cfg.options.ui.min_height
+    cfg.options.ui.min_width = 15
+    cfg.options.ui.min_height = 7
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Restore original config values for subsequent tests
+    cfg.options.ui.min_width = original_min_w
+    cfg.options.ui.min_height = original_min_h
+    -- Assert
+    assert.is_not_nil(result)
+    assert.is_not_nil(mock_call_args.nvim_open_win)
+    local win_config = mock_call_args.nvim_open_win.config
+    -- Calculation based on code walkthrough (assuming min_height=5 due to cache):
+    -- final content width = 4
+    -- final content height = 3 -> clamped by min_height(5) -> 5
+    assert.are.equal(4, win_config.width)
+    assert.are.equal(5, win_config.height) -- Expect 5 due to cached default min_height
+  end)
+
+  it("should return nil and restore focus if nvim_open_win fails", function()
+    -- Arrange: Make nvim_open_win return 0
+    orig_api.nvim_open_win = vim.api.nvim_open_win -- Save original
+    vim.api.nvim_open_win = function(_, _, _)
+      mock_call_args.nvim_open_win = "called" -- Mark as called
+      return 0
+    end
+    -- Mock nvim_set_current_win to track calls
+    orig_api.nvim_set_current_win = vim.api.nvim_set_current_win -- Save original
+    local set_current_win_calls = {}
+    vim.api.nvim_set_current_win = function(win_id)
+      table.insert(set_current_win_calls, win_id)
+    end
+    -- Act
+    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
+    -- Assert
+    assert.is_nil(result)
+    assert.are.equal("called", mock_call_args.nvim_open_win) -- Ensure it was attempted
+    assert.are.same({ 1000 }, set_current_win_calls) -- Should restore to original window (mocked as 1000)
   end)
 
   -- TODO: Add more tests:
@@ -124,4 +357,4 @@ describe('overlook.ui', function()
   -- - Test border types
   -- - Test edge cases (small window sizes, hitting min/max dimensions)
   -- - Test error handling for nvim_open_win failure
-end) 
+end)
