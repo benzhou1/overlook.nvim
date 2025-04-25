@@ -126,7 +126,8 @@ local function setup_mocks()
       return 2
     end
     if name == "winbar" then
-      return nil
+      -- Return empty string for disabled winbar, as per Neovim behavior
+      return ""
     end
     return nil
   end)
@@ -363,12 +364,14 @@ describe("overlook.ui", function()
       original_win_id = 1000,
     }
     package.loaded["overlook.stack"].push(prev_popup_info)
-    -- Mock winbar to be enabled
+    -- Mock winbar to be enabled *specifically for the previous window*
     orig_api.nvim_get_option_value = vim.api.nvim_get_option_value
-    vim.api.nvim_get_option_value = function(name, _)
-      if name == "winbar" then
-        return "%{1*Winbar%*}"
-      end -- Enable winbar
+    vim.api.nvim_get_option_value = function(name, opts)
+      if name == "winbar" and opts and opts.win == 999 then -- Check win_id is the previous popup
+        return "%{1*Winbar%*}" -- Enable winbar for previous window
+      elseif name == "winbar" then
+        return "" -- Disabled for others
+      end
       -- Provide other defaults needed by the function
       if name == "lines" then
         return 40

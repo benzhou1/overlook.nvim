@@ -141,7 +141,9 @@ function M.create_popup(opts)
     height = math.max(ui_opts.min_height, prev.height - ui_opts.height_decrement)
 
     -- Row and Col are now offsets RELATIVE to the previous window
-    row = ui_opts.stack_row_offset - (vim.o.winbar and 1 or 0) -- Adjust for winbar if enabled
+    -- Check winbar for the *previous* window specifically
+    local prev_winbar_enabled = vim.api.nvim_get_option_value("winbar", { win = prev.win_id }) ~= ""
+    row = ui_opts.stack_row_offset - (prev_winbar_enabled and 1 or 0) -- Adjust based on previous window's winbar
     col_abs = ui_opts.stack_col_offset
 
     win_config.width = width + 1
