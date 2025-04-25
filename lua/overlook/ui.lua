@@ -40,7 +40,7 @@ function M.create_popup(opts)
   end
 
   -- 1. Calculate Window Config
-  local win_config = { relative = "editor", style = "minimal", focusable = true }
+  local win_config = { relative = "win", style = "minimal", focusable = true }
   local current_stack_size = stack().size()
   win_config.zindex = ui_opts.z_index_base + current_stack_size
 
@@ -62,26 +62,21 @@ function M.create_popup(opts)
     local cursor_relative_screen_row = cursor_abs_screen_pos.row - win_pos[1] - 1
     local cursor_relative_screen_col = cursor_abs_screen_pos.col - win_pos[2] - 1
 
-    win_config.relative = "win"
     win_config.win = current_win_id
     win_config.col = cursor_relative_screen_col + ui_opts.col_offset
 
-    -- Calculate max editor dimensions accurately
-    local lines = api.nvim_get_option_value("lines", {})
-    local cmdheight = api.nvim_get_option_value("cmdheight", {})
-    local laststatus = api.nvim_get_option_value("laststatus", {})
-    local statusline_height = (laststatus == 2 or laststatus == 3) and 1 or 0
-    local max_editor_height = math.max(1, lines - cmdheight - statusline_height)
-    local max_editor_width = math.max(1, api.nvim_get_option_value("columns", {})) -- Assume full width initially
+    -- Calculate max window dimensions accurately
+    local max_window_height = api.nvim_win_get_height(current_win_id)
+    local max_window_width = api.nvim_win_get_width(current_win_id)
 
     -- Adjust available space/fittable size calculation based on accurate max_editor_height
-    local place_above = cursor_relative_screen_row > max_editor_height / 2
+    local place_above = cursor_relative_screen_row > max_window_height / 2
 
     -- 2. Calculate Available Space based on placement
     local screen_space_above = cursor_relative_screen_row
-    local screen_space_below = max_editor_height - cursor_relative_screen_row
+    local screen_space_below = max_window_height - cursor_relative_screen_row
     -- Subtract 2 from width for potential borders/padding
-    local screen_space_right = max_editor_width - cursor_relative_screen_col - 2
+    local screen_space_right = max_window_width - cursor_relative_screen_col - 2
     local border_vertical_overhead = 2 -- Assume 1 row top border, 1 row bottom border
     local border_horizontal_overhead = 2 -- Assume 1 col left, 1 col right
 
@@ -94,12 +89,8 @@ function M.create_popup(opts)
     local max_fittable_content_width = math.max(0, screen_space_right - border_horizontal_overhead)
 
     -- 3. Calculate Target Dimensions (Content Size)
-    -- Always calculate based on size_ratio now
-    local target_height
-    target_height = math.min(math.floor(max_editor_height * ui_opts.size_ratio), max_fittable_content_height)
-
-    local target_width
-    target_width = math.min(math.floor(max_editor_width * ui_opts.size_ratio), max_fittable_content_width)
+    local target_height = math.min(math.floor(max_window_height * ui_opts.size_ratio), max_fittable_content_height)
+    local target_width = math.min(math.floor(max_window_width * ui_opts.size_ratio), max_fittable_content_width)
 
     -- 4. Apply Constraints (min/max editor size) - Apply to Content Size
     height = math.min(max_fittable_content_height, math.max(ui_opts.min_height, target_height))
@@ -144,7 +135,6 @@ function M.create_popup(opts)
       return nil
     end
 
-    win_config.relative = "win"
     win_config.win = prev.win_id -- Specify the anchor window
 
     width = math.max(ui_opts.min_width, prev.width - ui_opts.width_decrement)
