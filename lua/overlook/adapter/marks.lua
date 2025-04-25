@@ -1,22 +1,15 @@
 local api = vim.api
 local M = {}
 
--- Cache modules (ui, config) - same as before
-local ui_mod ---@type table | nil
-local function ui()
-  if not ui_mod then
-    ui_mod = require("overlook.ui")
-  end
-  return ui_mod
-end
-
----Peeks a specific mark by opening its buffer in a popup.
-
+---Gets the options required for the peek popup for a specific mark.
+---Returns nil if the mark is invalid or an error occurs.
 ---@param mark_char string
-function M.peek(mark_char)
-  -- Input validation (same as before)
+---@return table | nil opts Table suitable for overlook.ui.create_popup, or nil on error.
+function M.get(mark_char)
+  -- Input validation
   if not mark_char or #mark_char ~= 1 then
-    return
+    vim.notify("Overlook Error: Invalid mark character provided.", vim.log.levels.ERROR)
+    return nil -- Return nil on invalid input
   end
 
   local pos = vim.fn.getpos("'" .. mark_char)
@@ -24,41 +17,37 @@ function M.peek(mark_char)
   local bufnum = pos[1]
   local lnum = pos[2]
   local col = pos[3]
-  -- local off = pos[4] -- Virtual column offset, usually not needed for display
 
   if bufnum == 0 or lnum == 0 then
     vim.notify("Overlook: Mark '" .. mark_char .. "' is not set.", vim.log.levels.INFO)
-    return
+    return nil -- Return nil if mark not set
   end
 
   -- Basic validation checks
   if not api.nvim_buf_is_loaded(bufnum) then
-    -- Attempt to load it? Or just return?
-    -- For now, just return, assuming it should be loaded.
-    return
+    -- Consider adding an option to load the buffer if desired.
+    vim.notify("Overlook Info: Buffer for mark '" .. mark_char .. "' is not loaded.", vim.log.levels.INFO)
+    return nil
   end
   if not api.nvim_buf_is_valid(bufnum) then
     vim.notify(
       "Overlook Error: Buffer for mark '" .. mark_char .. "' (" .. bufnum .. ") is invalid.",
       vim.log.levels.ERROR
     )
-    return
+    return nil -- Return nil if buffer invalid
   end
 
   local filepath = api.nvim_buf_get_name(bufnum)
   local display_path = vim.fn.fnamemodify(filepath, ":~:.") -- Title content
 
-  -- Create the popup, passing target buffer and position directly
-  ui().create_popup {
+  -- Return the options table for the popup
+  return {
     target_bufnr = bufnum,
     lnum = lnum,
     col = col,
     title = display_path,
-
-    -- No need to format lines here anymore
-    -- No need to pass target_info separately anymore
+    -- Add any other mark-specific options here if needed in the future
   }
-  -- No need to set buffer variable vim.b[...]
 end
 
 return M

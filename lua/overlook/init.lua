@@ -1,12 +1,12 @@
 local M = {}
 
--- Cache adapter module for performance
-local marks_adapter ---@type table | nil
-local function marks()
-  if not marks_adapter then
-    marks_adapter = require("overlook.adapter.marks")
+-- Cache peek module for performance
+local peek_mod ---@type table | nil
+local function peek()
+  if not peek_mod then
+    peek_mod = require("overlook.peek")
   end
-  return marks_adapter
+  return peek_mod
 end
 
 ---Public function to peek a mark using vim.ui.input.
@@ -14,7 +14,7 @@ function M.peek_mark()
   vim.ui.input({ prompt = "Overlook Mark:" }, function(input)
     -- Handle cancellation (input is nil)
     if input == nil then
-      vim.notify("Overlook: Mark peek cancelled.", vim.log.levels.INFO)
+      -- vim.notify("Overlook: Mark peek cancelled.", vim.log.levels.INFO) -- Optional: Less verbose
       return
     end
     -- Handle empty input
@@ -23,7 +23,7 @@ function M.peek_mark()
     end
     -- Validate input length
     if #input == 1 then
-      marks().peek(input) -- Call the adapter's peek function
+      peek().peek("marks", input) -- Call the generic peek function
     else
       vim.notify("Overlook Error: Invalid mark. Please enter a single character.", vim.log.levels.ERROR)
     end
@@ -35,10 +35,11 @@ end
 function M.setup(opts)
   require("overlook.config").setup(opts)
   -- Define User Commands or Keymaps here later if desired
-  -- Example:
-  -- vim.api.nvim_create_user_command('OverlookMark', M.peek_mark, {
-  --   desc = "Overlook: Peek a mark using stackable popups",
-  -- })
+  vim.api.nvim_create_user_command("OverlookMark", M.peek_mark, {
+    desc = "Overlook: Peek a mark using stackable popups",
+  })
+  -- Example Keymap:
+  -- vim.keymap.set("n", "<leader>om", M.peek_mark, { desc = "Overlook: Peek Mark" })
 end
 
 return M
