@@ -10,11 +10,10 @@ end
 
 local adapters = {
   marks = require("overlook.adapter.marks"),
-  -- definition = require("overlook.adapter.definition"), -- Placeholder for future
+  definition = require("overlook.adapter.definition"),
 }
 
 --- Generic peek function that calls the appropriate adapter's get() method
---- and displays the popup.
 --- @param adapter_type string The type of adapter ('marks', 'definition', etc.)
 --- @param ... any Arguments to pass to the adapter's get() function
 function M.peek(adapter_type, ...)

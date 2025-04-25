@@ -30,6 +30,11 @@ function M.peek_mark()
   end)
 end
 
+---Public function to peek the definition under the cursor.
+function M.peek_definition()
+  peek().peek("definition")
+end
+
 -- Setup function: Call this from your main Neovim config
 ---@param opts? table User configuration options (optional).
 function M.setup(opts)
@@ -38,8 +43,12 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("OverlookMark", M.peek_mark, {
     desc = "Overlook: Peek a mark using stackable popups",
   })
-  -- Example Keymap:
+  vim.api.nvim_create_user_command("OverlookDefinition", M.peek_definition, {
+    desc = "Overlook: Peek definition under cursor using stackable popups",
+  })
+  -- Example Keymaps:
   -- vim.keymap.set("n", "<leader>om", M.peek_mark, { desc = "Overlook: Peek Mark" })
+  -- vim.keymap.set("n", "<leader>od", M.peek_definition, { desc = "Overlook: Peek Definition" })
 end
 
 return M
