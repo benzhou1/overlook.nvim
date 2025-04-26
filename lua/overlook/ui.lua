@@ -18,6 +18,13 @@ local function stack()
   return stack_mod
 end
 
+-- Access the tracker (needs modification in stack.lua if not exposed)
+-- For now, assume stack() returns the module table including the tracker for simplicity
+-- A better approach might be dedicated functions in stack.lua like stack.increment_keymap_refcount(bufnr)
+-- and stack.set_initial_keymap(bufnr, key, ...) etc.
+-- Let's require stack explicitly to call potentially new functions if needed.
+local stack_module = require("overlook.stack")
+
 local group_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
 
 -- Define common border characters directly
@@ -131,7 +138,6 @@ function M.create_popup(opts)
     local prev = stack().top()
 
     if not prev or prev.width == nil or prev.height == nil or prev.row == nil or prev.col == nil then
-      vim.notify("Overlook Internal Error: Invalid previous popup state.", vim.log.levels.ERROR)
       return nil
     end
 
@@ -165,7 +171,6 @@ function M.create_popup(opts)
   local pre_open_win_id = api.nvim_get_current_win()
   local win_id = api.nvim_open_win(opts.target_bufnr, true, win_config)
   if not win_id or win_id == 0 then
-    vim.notify("Overlook Error: Failed to open window.", vim.log.levels.ERROR)
     if api.nvim_win_is_valid(pre_open_win_id) then
       api.nvim_set_current_win(pre_open_win_id)
     end
@@ -178,6 +183,54 @@ function M.create_popup(opts)
     vim.cmd("normal! zz")
   end)
 
+  -- Manage buffer-local keymap using tracker
+  local target_bufnr = opts.target_bufnr
+  local close_key = (config() and config().keys and config().keys.close) or "q"
+  local tracker_entry = stack_module.get_tracker_entry(target_bufnr) -- Assume this function exists in stack.lua
+
+  if not tracker_entry then
+    -- First reference for this buffer
+    local original_map_details = nil
+    local existing_maps = vim.api.nvim_buf_get_keymap(target_bufnr, "n")
+    for _, map in ipairs(existing_maps) do
+      if map.lhs == close_key then
+        original_map_details = {
+          key = close_key,
+          mode = "n",
+          map = {
+            rhs = map.rhs,
+            noremap = map.noremap == 1,
+            silent = map.silent == 1,
+            script = map.script == 1,
+            expr = map.expr == 1,
+            callback = map.callback,
+            desc = map.desc or "",
+          },
+        }
+        if original_map_details.map.callback then
+          original_map_details.map.rhs = nil
+        end
+        break
+      end
+    end
+
+    -- Set our temporary mapping
+    local close_cmd = "<Cmd>close<CR>"
+    vim.api.nvim_buf_set_keymap(
+      target_bufnr,
+      "n",
+      close_key,
+      close_cmd,
+      { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
+    )
+
+    -- Create tracker entry
+    stack_module.create_tracker_entry(target_bufnr, original_map_details)
+  else
+    -- Buffer already tracked, just increment ref count
+    stack_module.increment_tracker_refcount(target_bufnr)
+  end
+
   -- 4. Get final geometry and check validity
   local final_config = api.nvim_win_get_config(win_id)
   if final_config and final_config.width and final_config.height and final_config.row and final_config.col then
@@ -187,7 +240,6 @@ function M.create_popup(opts)
     col_abs = math.floor(final_config.col)
   else
     if width == nil or height == nil or row == nil or col_abs == nil then
-      vim.notify("Overlook Error: Geometry unavailable. Aborting popup.", vim.log.levels.ERROR)
       if api.nvim_win_is_valid(win_id) then
         api.nvim_win_close(win_id, true)
       end
@@ -198,10 +250,10 @@ function M.create_popup(opts)
     end
   end
 
-  -- 5. Add to Stack
-  stack().push {
+  -- 5. Add to Stack (keymap info is now handled by the tracker)
+  local stack_item = {
     win_id = win_id,
-    buf_id = opts.target_bufnr,
+    buf_id = target_bufnr,
     z_index = win_config.zindex,
     width = width,
     height = height,
@@ -209,6 +261,7 @@ function M.create_popup(opts)
     col = col_abs,
     original_win_id = original_win_id,
   }
+  stack().push(stack_item) -- Push item without keymap details
 
   -- 6. Setup WinClosed Autocommand
   api.nvim_create_autocmd("WinClosed", {
@@ -217,9 +270,8 @@ function M.create_popup(opts)
     once = true,
     callback = function(args)
       if tonumber(args.match) == win_id then
-        vim.schedule(function()
-          require("overlook.stack").handle_win_close(win_id)
-        end)
+        -- Call handle_win_close directly, without vim.schedule
+        require("overlook.stack").handle_win_close(win_id)
       end
     end,
   })

@@ -20,6 +20,7 @@ local M = {}
 ---@field min_width integer Minimum allowed width for any popup window.
 ---@field min_height integer Minimum allowed height for any popup window.
 ---@field size_ratio number Default size ratio (0.0 to 1.0) used to calculate initial size.
+---@field keys? table<string, string> Keymaps specific to the popup UI.
 
 ---@class OverlookAdapterOptions
 ---@field marks? table Configuration for the 'marks' adapter.
@@ -63,6 +64,11 @@ M.options = {
 
     -- Default size ratio (0.0 to 1.0) used to calculate initial size.
     size_ratio = 0.6,
+
+    -- Keymaps specific to the popup UI
+    keys = {
+      close = "q", -- Key to close the topmost popup
+    },
   },
 
   -- Adapter-specific configurations
