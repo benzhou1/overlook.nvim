@@ -29,6 +29,7 @@ local M = {}
 ---@class OverlookOptions
 ---@field ui OverlookUiOptions UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
+---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
 
 ---Default configuration options for overlook.nvim
 ---@type OverlookOptions
@@ -77,6 +78,9 @@ M.options = {
     marks = {},
     -- lsp = {}, -- Placeholder for future LSP adapter config
   },
+
+  -- Optional hook called when the last Overlook popup closes
+  on_stack_empty = nil,
 }
 
 -- Merges user-provided options with the defaults.

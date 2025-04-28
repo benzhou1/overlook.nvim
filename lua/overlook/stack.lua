@@ -149,6 +149,16 @@ function M.handle_win_close(closed_win_id)
     end
     -- Clear the original window ID only when the stack is empty *and* we've attempted focus restoration
     M.original_win_id = nil
+
+    -- Call the on_stack_empty hook ONLY if focus was successfully restored to the original window
+    local config_mod = require("overlook.config")
+    if config_mod and config_mod.options and type(config_mod.options.on_stack_empty) == "function" then
+      -- Use pcall to prevent user errors in hook from breaking the plugin
+      local ok, err = pcall(config_mod.options.on_stack_empty)
+      if not ok then
+        vim.notify("Overlook Error: on_stack_empty callback failed: " .. tostring(err), vim.log.levels.ERROR)
+      end
+    end
   end
 end
 

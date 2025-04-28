@@ -286,6 +286,74 @@ describe("overlook.stack", function()
       -- Restore
       stack.close_all = original_close_all
     end)
+
+    describe("on_stack_empty hook", function()
+      local hook_called
+      local config_mod
+      local notify_calls
+      local original_notify = vim.notify -- Store original globally
+
+      before_each(function()
+        hook_called = false
+        config_mod = require("overlook.config")
+        config_mod.options.on_stack_empty = function()
+          hook_called = true
+        end
+        setup_mocks_and_stack() -- Resets other mocks
+
+        -- Mock vim.notify globally for this block
+        notify_calls = {}
+        vim.notify = function(msg, level, opts)
+          table.insert(notify_calls, { msg = msg, level = level, opts = opts })
+        end
+      end)
+
+      after_each(function()
+        config_mod.options.on_stack_empty = nil
+        vim.notify = original_notify -- Restore original globally
+        -- No need to handle orig_api["vim.notify"] anymore
+      end)
+
+      it("should call on_stack_empty when stack becomes empty", function()
+        local item1 = { win_id = 1, original_win_id = 1000 }
+        stack.push(item1)
+        stack.handle_win_close(1)
+        assert.is_true(hook_called)
+      end)
+
+      it("should NOT call on_stack_empty if stack does not become empty", function()
+        local item1 = { win_id = 1, original_win_id = 1000 }
+        local item2 = { win_id = 2 }
+        stack.push(item1)
+        stack.push(item2)
+        stack.handle_win_close(2) -- Only close the top one
+        assert.are.equal(1, stack.size())
+        assert.is_false(hook_called)
+      end)
+
+      it("should NOT call on_stack_empty if hook is not defined", function()
+        config_mod.options.on_stack_empty = nil -- Undefine the hook
+        local item1 = { win_id = 1, original_win_id = 1000 }
+        stack.push(item1)
+        stack.handle_win_close(1)
+        assert.is_false(hook_called) -- hook_called flag remains false
+      end)
+
+      it("should catch errors in user hook and notify", function()
+        config_mod.options.on_stack_empty = function()
+          error("User hook error!") -- Simulate error
+        end
+
+        local item1 = { win_id = 1, original_win_id = 1000 }
+        stack.push(item1)
+        stack.handle_win_close(1)
+
+        assert.is_false(hook_called)
+        assert.are.equal(1, #notify_calls)
+        assert.matches("on_stack_empty callback failed: .*User hook error!", notify_calls[1].msg)
+        assert.are.equal(vim.log.levels.ERROR, notify_calls[1].level)
+      end)
+    end)
   end)
 
   describe("close_all", function()
@@ -340,7 +408,14 @@ describe("overlook.stack", function()
     local original_map_buf1 = {
       key = close_key,
       mode = "n",
-      map = { rhs = ":echo 'original q'<CR>", noremap = true, silent = false, script = false, expr = false, desc = "Original Q" },
+      map = {
+        rhs = ":echo 'original q'<CR>",
+        noremap = true,
+        silent = false,
+        script = false,
+        expr = false,
+        desc = "Original Q",
+      },
     }
     local temp_map_rhs = "<Cmd>close<CR>"
 
