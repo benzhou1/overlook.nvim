@@ -98,10 +98,11 @@ function M.create_popup(opts)
     -- 3. Calculate Target Dimensions (Content Size)
     local target_height = math.min(math.floor(max_window_height * ui_opts.size_ratio), max_fittable_content_height)
     local target_width = math.min(math.floor(max_window_width * ui_opts.size_ratio), max_fittable_content_width)
+    target_width = math.floor(max_window_width * ui_opts.size_ratio)
 
     -- 4. Apply Constraints (min/max editor size) - Apply to Content Size
-    height = math.min(max_fittable_content_height, math.max(ui_opts.min_height, target_height))
-    width = math.min(max_fittable_content_width, math.max(ui_opts.min_width, target_width))
+    height = math.max(ui_opts.min_height, target_height)
+    width = math.max(ui_opts.min_width, target_width)
 
     -- 5. Set Final Position based on placement and calculated size
     win_config.col = cursor_relative_screen_col + ui_opts.col_offset

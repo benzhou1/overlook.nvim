@@ -64,7 +64,7 @@ M.options = {
     min_height = 3,
 
     -- Default size ratio (0.0 to 1.0) used to calculate initial size.
-    size_ratio = 0.6,
+    size_ratio = 0.65,
 
     -- Keymaps specific to the popup UI
     keys = {
