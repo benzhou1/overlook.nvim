@@ -11,6 +11,7 @@ end
 local adapters = {
   marks = require("overlook.adapter.marks"),
   definition = require("overlook.adapter.definition"),
+  cursor = require("overlook.adapter.cursor"),
 }
 
 --- Generic peek function that calls the appropriate adapter's get() method

@@ -35,6 +35,11 @@ function M.peek_definition()
   peek().peek("definition")
 end
 
+---Public function to peek the current cursor position.
+function M.peek_cursor()
+  peek().peek("cursor")
+end
+
 -- Setup function: Call this from your main Neovim config
 ---@param opts? table User configuration options (optional).
 function M.setup(opts)
@@ -45,6 +50,9 @@ function M.setup(opts)
   })
   vim.api.nvim_create_user_command("OverlookDefinition", M.peek_definition, {
     desc = "Overlook: Peek definition under cursor using stackable popups",
+  })
+  vim.api.nvim_create_user_command("OverlookCursor", M.peek_cursor, {
+    desc = "Overlook: Peek cursor position using stackable popups",
   })
   -- Example Keymaps:
   -- vim.keymap.set("n", "<leader>om", M.peek_mark, { desc = "Overlook: Peek Mark" })
