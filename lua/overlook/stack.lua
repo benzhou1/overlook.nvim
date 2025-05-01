@@ -2,29 +2,6 @@ local api = vim.api
 
 local M = {}
 
--- Tracker for buffer-local keymap overrides
--- Key: bufnr
--- Value: { original_map_details: table | nil, ref_count: integer }
-local buffer_keymap_tracker = {}
-
--- Helper function to restore original map - DEFINED BEFORE USE
-local function restore_original_map(bufnr, original_map_details)
-  if not original_map_details then
-    return
-  end
-  local restore_opts = {
-    buffer = bufnr,
-    noremap = original_map_details.map.noremap,
-    silent = original_map_details.map.silent,
-    script = original_map_details.map.script,
-    expr = original_map_details.map.expr,
-    callback = original_map_details.map.callback,
-    desc = original_map_details.map.desc,
-  }
-  local rhs = original_map_details.map.rhs
-  vim.keymap.set(original_map_details.mode, original_map_details.key, rhs or "", restore_opts)
-end
-
 ---@class OverlookStackItem
 ---@field win_id integer Window ID of the popup
 ---@field buf_id integer Buffer ID of the *target* buffer shown in the popup
@@ -96,26 +73,6 @@ function M.handle_win_close(closed_win_id)
     return
   end
 
-  local closed_bufnr = item.buf_id
-  local tracker_entry = buffer_keymap_tracker[closed_bufnr]
-
-  if tracker_entry then
-    tracker_entry.ref_count = tracker_entry.ref_count - 1
-
-    if tracker_entry.ref_count <= 0 then
-      -- Last reference, delete temp map and restore original
-      local close_key = (require("overlook.config").options.ui.keys or {}).close or "q"
-      pcall(vim.keymap.del, "n", close_key, { buffer = closed_bufnr })
-
-      -- Restore original if it exists
-      if tracker_entry.original_map_details then
-        restore_original_map(closed_bufnr, tracker_entry.original_map_details)
-      end
-      -- Remove tracker entry
-      buffer_keymap_tracker[closed_bufnr] = nil -- Explicitly remove entry!
-    end
-  end
-
   -- Window was found in the stack. Remove it.
   table.remove(M.stack, index)
 
@@ -133,7 +90,7 @@ function M.handle_win_close(closed_win_id)
         M.original_win_id = nil -- Clear original ID since stack should be empty now
       else
         -- If original is gone too, close everything remaining as a safety measure
-        M.close_all(true) -- Call close_all! Found the bug.
+        M.close_all(true)
         M.original_win_id = nil -- Ensure it's cleared
       end
     end
@@ -151,7 +108,7 @@ function M.handle_win_close(closed_win_id)
     -- Clear the original window ID only when the stack is empty *and* we've attempted focus restoration
     M.original_win_id = nil
 
-    -- Call the on_stack_empty hook ONLY if focus was successfully restored to the original window
+    -- Call the on_stack_empty hook if defined
     local config_mod = require("overlook.config")
     if config_mod and config_mod.options and type(config_mod.options.on_stack_empty) == "function" then
       -- Use pcall to prevent user errors in hook from breaking the plugin
@@ -161,6 +118,12 @@ function M.handle_win_close(closed_win_id)
       end
     end
   end
+
+  -- Explicitly update the keymap state after handling window close and focus change
+  -- Use vim.schedule to ensure this runs after Neovim has processed the focus change
+  vim.schedule(function()
+    require("overlook.state").update_keymap_state()
+  end)
 end
 
 -- close_all() - Modified to use eventignore
@@ -170,23 +133,6 @@ function M.close_all(force_close)
   local original_win_to_restore = M.original_win_id
   local stack_copy = vim.deepcopy(M.stack) -- Copy stack to iterate safely
 
-  -- Delete temporary maps and restore original keymaps using the tracker
-  local close_key = (require("overlook.config").options.ui.keys or {}).close or "q"
-  for bufnr, entry in pairs(buffer_keymap_tracker) do
-    -- Delete the temporary map using Lua keymap API
-    pcall(vim.keymap.del, "n", close_key, { buffer = bufnr })
-    -- Restore the original map if one was stored
-    if entry.original_map_details then
-      restore_original_map(bufnr, entry.original_map_details)
-    end
-  end
-  -- Clear the tracker completely
-  buffer_keymap_tracker = {}
-
-  -- Clear the stack state immediately -- MOVED LATER
-  -- M.stack = {}
-  -- M.original_win_id = nil
-
   -- Ignore WinClosed while we manually close everything
   vim.opt.eventignore:append("WinClosed")
 
@@ -194,7 +140,7 @@ function M.close_all(force_close)
   for i = #stack_copy, 1, -1 do
     local popup_info = stack_copy[i]
     if popup_info and api.nvim_win_is_valid(popup_info.win_id) then
-      pcall(api.nvim_win_close, popup_info.win_id, force_close or false) -- Ensure this runs
+      pcall(api.nvim_win_close, popup_info.win_id, force_close or false)
     end
   end
 
@@ -209,12 +155,11 @@ function M.close_all(force_close)
   if original_win_to_restore and api.nvim_win_is_valid(original_win_to_restore) then
     pcall(api.nvim_set_current_win, original_win_to_restore)
   else
-    -- Fallback IF AND ONLY IF original_win_to_restore was set but became invalid.
     -- Do not fallback if original_win_to_restore was nil initially.
-    if original_win_to_restore then -- Check if we *tried* to restore an original
+    if original_win_to_restore then
       local wins = api.nvim_list_wins()
       if wins and #wins > 0 then
-        local target_win = wins[1] -- Focus first available window
+        local target_win = wins[1]
         if api.nvim_win_is_valid(target_win) then
           pcall(api.nvim_set_current_win, target_win)
         end
@@ -224,29 +169,12 @@ function M.close_all(force_close)
 
   -- Clean up the autocommand group to prevent leaks
   pcall(api.nvim_del_augroup_by_name, "OverlookPopupClose")
-end
 
--- Functions to manage the tracker
-function M.get_tracker_entry(bufnr)
-  return buffer_keymap_tracker[bufnr]
-end
-
-function M.create_tracker_entry(bufnr, original_map_details)
-  buffer_keymap_tracker[bufnr] = {
-    original_map_details = original_map_details, -- This is the structured details { key=.., mode=.., map=.. }
-    ref_count = 1,
-  }
-end
-
-function M.increment_tracker_refcount(bufnr)
-  if buffer_keymap_tracker[bufnr] then
-    buffer_keymap_tracker[bufnr].ref_count = buffer_keymap_tracker[bufnr].ref_count + 1
-  end
-end
-
--- Function to reset the internal tracker (for testing)
-function M.reset_keymap_tracker()
-  buffer_keymap_tracker = {}
+  -- Explicitly update the keymap state after closing all windows and restoring focus
+  -- Use vim.schedule to ensure this runs after Neovim has processed the focus change
+  vim.schedule(function()
+    require("overlook.state").update_keymap_state()
+  end)
 end
 
 return M

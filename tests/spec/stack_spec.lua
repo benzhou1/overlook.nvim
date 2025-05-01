@@ -1,13 +1,21 @@
 local stack = require("overlook.stack")
+local state = require("overlook.state")
 
 -- Store original API functions and mock call arguments
 local orig_api = {}
 local orig_deepcopy = nil
+local orig_fn = {} -- For mocking vim.fn
 local mock_call_args = {}
 
 -- Save original keymap APIs
 local orig_keymap_set = vim.keymap.set
 local orig_keymap_del = vim.keymap.del
+local orig_keymap_get = vim.keymap.get
+
+-- Store original schedule and variable to hold scheduled function
+local original_schedule = vim.schedule
+local scheduled_function = nil
+local current_win_override = nil -- Variable for overriding current window
 
 -- Helper to mock vim.api functions
 local function mock_api(name, mock_fn)
@@ -23,44 +31,56 @@ local function setup_mocks_and_stack()
   for k, v in pairs(orig_api) do
     vim.api[k] = v
   end
+  for k, v in pairs(orig_fn) do
+    vim.fn[k] = v
+  end
   if orig_deepcopy then
     vim.deepcopy = orig_deepcopy
   end
   orig_api = {}
+  orig_fn = {}
   orig_deepcopy = nil
+  scheduled_function = nil -- Ensure reset at start
+  current_win_override = nil -- Reset override
 
   mock_call_args = { -- Reset captured args
     nvim_set_current_win = {},
     nvim_win_close = {},
     close_all_called = false, -- Flag for mocking stack.close_all
-    nvim_buf_set_keymap = {},
-    nvim_buf_del_keymap = {},
-    nvim_buf_get_keymap_calls = 0,
+    keymap_set = {}, -- Rename for clarity
+    keymap_del = {}, -- Rename for clarity
+    keymap_get = {}, -- Track get calls
+    nvim_win_get_buf = {}, -- Track get_buf calls
   }
 
   -- Reset stack state
   stack.stack = {}
   stack.original_win_id = nil
 
-  -- Default Mocks for stack tests
-  mock_api("nvim_win_is_valid", function(win_id)
-    -- Assume specified win_ids are valid by default, tests can override
-    return win_id == 1 or win_id == 2 or win_id == 1000 -- Common IDs used in tests
+  -- Mock nvim_get_current_win using override variable and a default
+  local default_current_mocked_win = 1 -- Default start window for tests
+  mock_api("nvim_get_current_win", function()
+    return current_win_override or default_current_mocked_win
   end)
+
+  -- Mock nvim_set_current_win to update the override or default value
   mock_api("nvim_set_current_win", function(win_id)
-    table.insert(mock_call_args.nvim_set_current_win, win_id) -- Track calls
+    table.insert(mock_call_args.nvim_set_current_win, win_id)
+    default_current_mocked_win = win_id
+  end)
+
+  mock_api("nvim_win_is_valid", function(win_id)
+    return win_id == 1 or win_id == 2 or win_id == 1000
   end)
   mock_api("nvim_list_wins", function()
-    return { 1, 2, 1000 } -- Default list of windows
+    return { 1, 2, 1000 }
   end)
   mock_api("nvim_win_close", function(win_id, force)
-    table.insert(mock_call_args.nvim_win_close, { id = win_id, force = force or false }) -- Track calls
-    -- Simulate window removal for subsequent nvim_win_is_valid calls within the same test?
-    -- For simplicity, let's assume nvim_win_is_valid remains true unless explicitly mocked otherwise in a test.
+    table.insert(mock_call_args.nvim_win_close, { id = win_id, force = force or false })
   end)
   -- Mock keymap.set and keymap.del to capture plugin calls
   vim.keymap.set = function(mode, lhs, rhs, opts)
-    table.insert(mock_call_args.nvim_buf_set_keymap, {
+    table.insert(mock_call_args.keymap_set, {
       bufnr = opts.buffer,
       mode = mode,
       lhs = lhs,
@@ -69,7 +89,7 @@ local function setup_mocks_and_stack()
     })
   end
   vim.keymap.del = function(mode, lhs, opts)
-    table.insert(mock_call_args.nvim_buf_del_keymap, {
+    table.insert(mock_call_args.keymap_del, {
       bufnr = opts.buffer,
       mode = mode,
       lhs = lhs,
@@ -77,39 +97,90 @@ local function setup_mocks_and_stack()
     })
   end
 
+  -- Mock win_get_buf to associate windows with buffers used in tests
+  mock_api("nvim_win_get_buf", function(win_id)
+    table.insert(mock_call_args.nvim_win_get_buf, { win_id = win_id })
+    if win_id == 1 then
+      return 10 -- popup_win -> popup_buf
+    elseif win_id == 2 then
+      return 20 -- other_win -> other_buf (for cleanup tests)
+    elseif win_id == 1000 then
+      return 30 -- original_win_id (fallback) -> some buf
+    end
+    return 99 -- Default unknown buffer
+  end)
+
+  -- Mock buffer validity
+  mock_api("nvim_buf_is_valid", function(buf_id)
+    -- Revert to simpler validity check if needed, or keep broad one
+    -- Make sure all buffers potentially returned by nvim_win_get_buf mock are valid
+    return buf_id == 10 or buf_id == 20 or buf_id == 30 or buf_id == 99
+  end)
+
+  -- Mock buffer name retrieval
+  mock_api("nvim_buf_get_name", function(buf_id)
+    if buf_id == 10 then
+      return "/path/to/buffer10.txt"
+    end
+    if buf_id == 20 then
+      return "/path/to/buffer20.txt"
+    end
+    if buf_id == 30 then
+      return "/path/to/buffer30.txt"
+    end
+    if buf_id == 99 then
+      return ""
+    end -- Unnamed buffer
+    -- Trigger error for unexpected buffer IDs during tests
+    error("nvim_buf_get_name called with unexpected buffer id: " .. tostring(buf_id))
+  end)
+
   -- Mock vim.deepcopy as close_all uses it
   if vim.deepcopy then
     orig_deepcopy = vim.deepcopy
   end
-  vim.deepcopy = function(tbl) -- Simple deepcopy mock for tables
-    local new_tbl = {}
-    for k, v in pairs(tbl) do
-      if type(v) == "table" then
-        new_tbl[k] = vim.deepcopy(v) -- Recurse
-      else
-        new_tbl[k] = v
-      end
-    end
-    return new_tbl
+
+  -- No need to reset stack state here, before_each handles it
+
+  -- Mock vim.schedule to capture the function
+  vim.schedule = function(func)
+    scheduled_function = func
+  end
+end
+
+-- Helper to run the captured scheduled function
+local function run_scheduled()
+  if scheduled_function then
+    local fn_to_run = scheduled_function
+    scheduled_function = nil -- Clear before running to prevent re-entrancy issues
+    fn_to_run()
   end
 end
 
 describe("overlook.stack", function()
-  before_each(setup_mocks_and_stack) -- Use the new setup function
+  before_each(setup_mocks_and_stack)
 
   after_each(function()
     -- Restore original functions after each test
     for k, v in pairs(orig_api) do
       vim.api[k] = v
     end
+    for k, v in pairs(orig_fn) do
+      vim.fn[k] = v
+    end
     if orig_deepcopy then
       vim.deepcopy = orig_deepcopy
     end
     orig_api = {}
+    orig_fn = {}
     orig_deepcopy = nil
-    -- Restore keymap.set and keymap.del
+    -- Restore keymap.set, del, and get
     vim.keymap.set = orig_keymap_set
     vim.keymap.del = orig_keymap_del
+    vim.keymap.get = orig_keymap_get
+    -- Restore vim.schedule
+    vim.schedule = original_schedule
+    scheduled_function = nil
     -- No need to reset stack state here, before_each handles it
   end)
 
@@ -179,6 +250,7 @@ describe("overlook.stack", function()
       stack.push(item2)
       assert.are.equal(2, stack.size())
       stack.handle_win_close(2) -- Close top window
+      run_scheduled() -- Run the potential keymap update
       assert.are.equal(1, stack.size())
       assert.are.same(item1, stack.top())
     end)
@@ -189,6 +261,7 @@ describe("overlook.stack", function()
       stack.push(item1)
       stack.push(item2)
       stack.handle_win_close(2)
+      run_scheduled() -- Run the potential keymap update
       assert.are.same({ 1 }, mock_call_args.nvim_set_current_win)
     end)
 
@@ -196,6 +269,7 @@ describe("overlook.stack", function()
       local item1 = { win_id = 1, original_win_id = 1000 }
       stack.push(item1)
       stack.handle_win_close(1)
+      run_scheduled() -- Run the potential keymap update
       assert.are.equal(0, stack.size())
       assert.is_nil(stack.original_win_id) -- Should be cleared
       -- Expect ONLY ONE call now (no initial HACK)
@@ -206,6 +280,7 @@ describe("overlook.stack", function()
       local item1 = { win_id = 1, original_win_id = 1000 }
       stack.push(item1)
       stack.handle_win_close(99)
+      run_scheduled() -- Run the potential keymap update (should be nil)
       assert.are.equal(1, stack.size())
       assert.are.equal(1000, stack.original_win_id)
       -- Expect ZERO calls now (no initial HACK)
@@ -219,6 +294,7 @@ describe("overlook.stack", function()
       end) -- Make only win 1 valid
       stack.push(item1)
       stack.handle_win_close(1)
+      run_scheduled() -- Run the potential keymap update
       assert.are.equal(0, stack.size())
       assert.is_nil(stack.original_win_id)
       -- Expect focus on first window from nvim_list_wins mock
@@ -247,6 +323,8 @@ describe("overlook.stack", function()
 
       -- Act
       stack.handle_win_close(2)
+      -- Don't run scheduled here, as close_all should be called instead of setting focus
+      -- The schedule call inside close_all will be handled if we test close_all directly
 
       -- Assert
       assert.are.equal(1, stack.size()) -- item2 should still be removed
@@ -288,6 +366,7 @@ describe("overlook.stack", function()
         local item1 = { win_id = 1, original_win_id = 1000 }
         stack.push(item1)
         stack.handle_win_close(1)
+        run_scheduled() -- Run the potential keymap update
         assert.is_true(hook_called)
       end)
 
@@ -297,6 +376,7 @@ describe("overlook.stack", function()
         stack.push(item1)
         stack.push(item2)
         stack.handle_win_close(2) -- Only close the top one
+        run_scheduled() -- Run the potential keymap update
         assert.are.equal(1, stack.size())
         assert.is_false(hook_called)
       end)
@@ -306,6 +386,7 @@ describe("overlook.stack", function()
         local item1 = { win_id = 1, original_win_id = 1000 }
         stack.push(item1)
         stack.handle_win_close(1)
+        run_scheduled() -- Run the potential keymap update
         assert.is_false(hook_called) -- hook_called flag remains false
       end)
 
@@ -317,12 +398,43 @@ describe("overlook.stack", function()
         local item1 = { win_id = 1, original_win_id = 1000 }
         stack.push(item1)
         stack.handle_win_close(1)
+        run_scheduled() -- Run the potential keymap update
 
         assert.is_false(hook_called)
         assert.are.equal(1, #notify_calls)
         assert.matches("on_stack_empty callback failed: .*User hook error!", notify_calls[1].msg)
         assert.are.equal(vim.log.levels.ERROR, notify_calls[1].level)
       end)
+    end)
+
+    it("should trigger keymap cleanup via update_overlook_keymap_state", function()
+      -- Arrange: Setup stack
+      local item1 = { win_id = 1, buf_id = 10, original_win_id = 1000 }
+      local item2 = { win_id = 2, buf_id = 20 } -- Top window
+      stack.push(item1)
+      stack.push(item2)
+
+      -- Simulate state where popup (win 2) is focused and keymap was set
+      current_win_override = 2 -- Use override variable
+      state.update_keymap_state() -- Use state module function
+      -- Reset mocks potentially affected by the setup run, except for the keymap state
+      mock_call_args.nvim_buf_get_name = {}
+      assert.are.equal(1, #mock_call_args.keymap_set) -- Verify setup call worked
+      assert.are.equal(20, mock_call_args.keymap_set[1].bufnr)
+      current_win_override = nil -- Make sure override is off before next step
+
+      -- Mock the state AFTER close: focus moves to win 1 (via default mock update)
+
+      -- Act: Close the top window (win 2)
+      stack.handle_win_close(2)
+
+      -- Simulate running the scheduled function
+      run_scheduled()
+
+      -- Assert: Check that keymap was deleted
+      assert.are.equal(1, #mock_call_args.keymap_del) -- Should be exactly one deletion
+      assert.are.equal(20, mock_call_args.keymap_del[1].bufnr) -- Deleted from buf 20
+      assert.are.equal("q", mock_call_args.keymap_del[1].lhs) -- Assuming default key
     end)
   end)
 
@@ -333,6 +445,7 @@ describe("overlook.stack", function()
       stack.push(item1)
       stack.push(item2)
       stack.close_all()
+      run_scheduled() -- Run the potential keymap update after close_all
       assert.are.same({ { id = 2, force = false }, { id = 1, force = false } }, mock_call_args.nvim_win_close)
     end)
 
@@ -340,6 +453,7 @@ describe("overlook.stack", function()
       local item1 = { win_id = 1 }
       stack.push(item1)
       stack.close_all(true)
+      run_scheduled() -- Run the potential keymap update after close_all
       assert.are.same({ { id = 1, force = true } }, mock_call_args.nvim_win_close)
     end)
 
@@ -349,6 +463,7 @@ describe("overlook.stack", function()
       -- Mock close to not actually trigger handle_win_close
       mock_api("nvim_win_close", function(_, _) end)
       stack.close_all()
+      run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size())
     end)
 
@@ -357,6 +472,7 @@ describe("overlook.stack", function()
       local item1 = { win_id = 1, original_win_id = 1000 }
       stack.push(item1)
       stack.close_all()
+      run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size()) -- Stack should be empty
       assert.are.same({ 1000 }, mock_call_args.nvim_set_current_win) -- Check focus call
     end)
@@ -366,204 +482,37 @@ describe("overlook.stack", function()
       local item1 = { win_id = 1 }
       stack.push(item1)
       stack.close_all()
+      run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size())
       assert.are.same({}, mock_call_args.nvim_set_current_win) -- No focus call expected
     end)
-  end)
 
-  describe("Keymap Tracking", function()
-    local buf1 = 10
-    local buf2 = 20
-    local close_key = "q" -- Assuming default
-    local original_map_buf1 = {
-      key = close_key,
-      mode = "n",
-      map = {
-        rhs = ":echo 'original q'<CR>",
-        noremap = true,
-        silent = false,
-        script = false,
-        expr = false,
-        desc = "Original Q",
-      },
-    }
-    local temp_map_rhs = "<Cmd>close<CR>"
+    it("should trigger keymap cleanup via update_overlook_keymap_state", function()
+      -- Arrange: Setup stack
+      local item1 = { win_id = 1, buf_id = 10, original_win_id = 1000 }
+      stack.push(item1)
 
-    -- Ensure clean tracker state for these tests
-    before_each(function()
-      stack.reset_keymap_tracker()
-    end)
+      -- Simulate state where popup (win 1) is focused and keymap was set
+      current_win_override = 1 -- Use override variable
+      state.update_keymap_state() -- Use state module function
+      -- Reset mocks potentially affected by the setup run
+      mock_call_args.nvim_buf_get_name = {}
+      assert.are.equal(1, #mock_call_args.keymap_set) -- Verify setup call worked
+      assert.are.equal(10, mock_call_args.keymap_set[1].bufnr)
+      current_win_override = nil -- Make sure override is off for next step
 
-    it("should create tracker entry correctly", function()
-      stack.create_tracker_entry(buf1, original_map_buf1)
-      local entry = stack.get_tracker_entry(buf1)
-      assert.is_not_nil(entry)
-      assert.are.equal(1, entry.ref_count)
-      assert.are.same(original_map_buf1, entry.original_map_details)
-    end)
+      -- Mock the state AFTER close: focus moves to original window (1000) (via default mock update)
 
-    it("should increment ref count correctly", function()
-      stack.create_tracker_entry(buf1, nil) -- Start with ref 1
-      stack.increment_tracker_refcount(buf1)
-      local entry = stack.get_tracker_entry(buf1)
-      assert.are.equal(2, entry.ref_count)
-    end)
+      -- Act: Close all windows
+      stack.close_all()
 
-    it("should handle incrementing non-existent entry gracefully", function()
-      -- This test was flawed. Incrementing a non-existent entry should do nothing.
-      -- Ensure tracker is empty first (handled by before_each now)
-      -- stack.buffer_keymap_tracker = {}
-      stack.increment_tracker_refcount(buf1)
-      local entry = stack.get_tracker_entry(buf1)
-      assert.is_nil(entry) -- Should still be nil
-    end)
+      -- Simulate running the scheduled function
+      run_scheduled()
 
-    describe("handle_win_close with keymaps", function()
-      before_each(function()
-        -- Mock config for close_key
-        local config_mod = require("overlook.config")
-        config_mod.options.ui.keys = { close = close_key }
-        -- Setup initial state for keymap tests
-        stack.create_tracker_entry(buf1, original_map_buf1) -- Buffer 1 has original map, ref 1
-        stack.increment_tracker_refcount(buf1) -- Increment to ref 2 (simulating two popups)
-        stack.create_tracker_entry(buf2, nil) -- Buffer 2 has no original map, ref 1
-        -- Simulate the temporary map being set on both buffers
-        vim.keymap.set(
-          "n",
-          close_key,
-          temp_map_rhs,
-          { buffer = buf1, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
-        )
-        vim.keymap.set(
-          "n",
-          close_key,
-          temp_map_rhs,
-          { buffer = buf2, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
-        )
-        -- Reset API call args specifically for these tests
-        mock_call_args.nvim_buf_del_keymap = {}
-        mock_call_args.nvim_buf_set_keymap = {}
-      end)
-
-      it("should decrement ref count but not restore map if count > 0", function()
-        local item_buf1_win1 = { win_id = 1, buf_id = buf1 }
-        local item_buf1_win2 = { win_id = 2, buf_id = buf1 }
-        stack.push(item_buf1_win1)
-        stack.push(item_buf1_win2)
-
-        -- Before close, ref count is 2
-        assert.are.equal(2, stack.get_tracker_entry(buf1).ref_count)
-
-        stack.handle_win_close(2) -- Close one window for buffer 1
-
-        -- After close, ref count should be 1
-        local entry = stack.get_tracker_entry(buf1)
-        assert.is_not_nil(entry)
-        assert.are.equal(1, entry.ref_count)
-
-        -- Should NOT delete temp map or restore original map yet
-        assert.are.same({}, mock_call_args.nvim_buf_del_keymap)
-        assert.are.same({}, mock_call_args.nvim_buf_set_keymap)
-      end)
-
-      it("should delete temp map and restore original map when count hits 0", function()
-        local item_buf1_win1 = { win_id = 1, buf_id = buf1 }
-        stack.create_tracker_entry(buf1, original_map_buf1) -- Override setup to start count at 1
-        stack.push(item_buf1_win1) -- Only one item for buf1, ref count will go 1 -> 0
-
-        -- Before close, ref count is 1
-        assert.are.equal(1, stack.get_tracker_entry(buf1).ref_count)
-
-        stack.handle_win_close(1) -- Close the only window for buffer 1
-
-        -- After close, entry should be removed
-        local entry = stack.get_tracker_entry(buf1)
-        assert.is_nil(entry) -- Tracker entry should be removed
-
-        -- Check API calls
-        assert.are.equal(1, #mock_call_args.nvim_buf_del_keymap)
-        assert.are.equal(1, #mock_call_args.nvim_buf_set_keymap)
-        local deleted_call = mock_call_args.nvim_buf_del_keymap[1]
-        assert.are.equal(buf1, deleted_call.bufnr)
-        assert.are.equal("n", deleted_call.mode)
-        assert.are.equal(close_key, deleted_call.lhs)
-        assert.are.equal(original_map_buf1.map.rhs, mock_call_args.nvim_buf_set_keymap[1].rhs)
-        assert.are.equal(original_map_buf1.map.noremap, mock_call_args.nvim_buf_set_keymap[1].opts.noremap)
-        assert.are.equal(original_map_buf1.map.desc, mock_call_args.nvim_buf_set_keymap[1].opts.desc)
-      end)
-
-      it("should delete temp map and NOT restore when count hits 0 and no original map existed", function()
-        local item_buf2_win3 = { win_id = 3, buf_id = buf2 }
-        stack.create_tracker_entry(buf2, nil) -- Override setup to start count at 1
-        stack.push(item_buf2_win3) -- Only one item for buf2, ref count will go 1 -> 0
-
-        assert.are.equal(1, stack.get_tracker_entry(buf2).ref_count)
-        stack.handle_win_close(3) -- Close the only window for buffer 2
-        local entry = stack.get_tracker_entry(buf2)
-        assert.is_nil(entry)
-        assert.are.equal(1, #mock_call_args.nvim_buf_del_keymap)
-        -- Check that set_keymap was NOT called (since no original map)
-        assert.are.same({}, mock_call_args.nvim_buf_set_keymap)
-      end)
-    end)
-
-    describe("close_all with keymaps", function()
-      before_each(function()
-        -- Mock config for close_key
-        local config_mod = require("overlook.config")
-        config_mod.options.ui.keys = { close = close_key }
-        -- Setup initial state for keymap tests
-        stack.create_tracker_entry(buf1, original_map_buf1) -- Buffer 1 has original map, ref 1
-        stack.create_tracker_entry(buf2, nil) -- Buffer 2 has no original map, ref 1
-        -- Simulate the temporary map being set on both buffers
-        vim.keymap.set(
-          "n",
-          close_key,
-          temp_map_rhs,
-          { buffer = buf1, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
-        )
-        vim.keymap.set(
-          "n",
-          close_key,
-          temp_map_rhs,
-          { buffer = buf2, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
-        )
-        -- Reset API call args specifically for these tests
-        mock_call_args.nvim_buf_del_keymap = {}
-        mock_call_args.nvim_buf_set_keymap = {}
-        -- Push items to stack (needed for close_all window closing part)
-        stack.push { win_id = 1, buf_id = buf1 }
-        stack.push { win_id = 2, buf_id = buf2 }
-      end)
-
-      it("should delete temp maps and restore original maps for all tracked buffers", function()
-        stack.close_all()
-
-        -- Check deletions (order might vary due to pairs iteration)
-        assert.are.equal(2, #mock_call_args.nvim_buf_del_keymap)
-        local deleted_bufs = {}
-        for _, del_call in ipairs(mock_call_args.nvim_buf_del_keymap) do
-          deleted_bufs[del_call.bufnr] = true
-        end
-        assert.is_true(deleted_bufs[buf1])
-        assert.is_true(deleted_bufs[buf2])
-        assert.are.equal(close_key, mock_call_args.nvim_buf_del_keymap[1].lhs)
-
-        -- Check restorations
-        assert.are.equal(1, #mock_call_args.nvim_buf_set_keymap) -- Only buf1 had original map
-        local restore_call = mock_call_args.nvim_buf_set_keymap[1]
-        assert.are.equal(buf1, restore_call.bufnr)
-        assert.are.equal("n", restore_call.mode)
-        assert.are.equal(close_key, restore_call.lhs)
-        assert.are.equal(original_map_buf1.map.rhs, restore_call.rhs)
-
-        -- Check tracker is cleared
-        assert.is_nil(stack.get_tracker_entry(buf1)) -- Check specific entries are gone
-        assert.is_nil(stack.get_tracker_entry(buf2))
-        -- local any_left = false
-        -- for _ in pairs(stack.buffer_keymap_tracker) do any_left = true break end -- Cannot access internal variable
-        -- assert.is_false(any_left)
-      end)
+      -- Assert: Check that keymap was deleted
+      assert.are.equal(1, #mock_call_args.keymap_del) -- Should be exactly one deletion
+      assert.are.equal(10, mock_call_args.keymap_del[1].bufnr) -- Deleted from buf 10
+      assert.are.equal("q", mock_call_args.keymap_del[1].lhs) -- Assuming default key
     end)
   end)
 end)

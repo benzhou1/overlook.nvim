@@ -18,13 +18,6 @@ local function stack()
   return stack_mod
 end
 
--- Access the tracker (needs modification in stack.lua if not exposed)
--- For now, assume stack() returns the module table including the tracker for simplicity
--- A better approach might be dedicated functions in stack.lua like stack.increment_keymap_refcount(bufnr)
--- and stack.set_initial_keymap(bufnr, key, ...) etc.
--- Let's require stack explicitly to call potentially new functions if needed.
-local stack_module = require("overlook.stack")
-
 local group_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
 
 -- Define common border characters directly
@@ -184,54 +177,6 @@ function M.create_popup(opts)
     vim.cmd("normal! zz")
   end)
 
-  -- Manage buffer-local keymap using tracker
-  local target_bufnr = opts.target_bufnr
-  local close_key = (config() and config().keys and config().keys.close) or "q"
-  local tracker_entry = stack_module.get_tracker_entry(target_bufnr) -- Assume this function exists in stack.lua
-
-  if not tracker_entry then
-    -- First reference for this buffer
-    local original_map_details = nil
-    local existing_maps = vim.api.nvim_buf_get_keymap(target_bufnr, "n")
-    for _, map in ipairs(existing_maps) do
-      if map.lhs == close_key then
-        original_map_details = {
-          key = close_key,
-          mode = "n",
-          map = {
-            rhs = map.rhs,
-            noremap = map.noremap == 1,
-            silent = map.silent == 1,
-            script = map.script == 1,
-            expr = map.expr == 1,
-            callback = map.callback,
-            desc = map.desc or "",
-          },
-        }
-        if original_map_details.map.callback then
-          original_map_details.map.rhs = nil
-        end
-        break
-      end
-    end
-
-    -- Set our temporary mapping
-    local close_cmd = "<Cmd>close<CR>"
-    vim.keymap.set("n", close_key, close_cmd, {
-      buffer = target_bufnr,
-      noremap = true,
-      silent = true,
-      nowait = true,
-      desc = "Overlook: Close popup",
-    })
-
-    -- Create tracker entry
-    stack_module.create_tracker_entry(target_bufnr, original_map_details)
-  else
-    -- Buffer already tracked, just increment ref count
-    stack_module.increment_tracker_refcount(target_bufnr)
-  end
-
   -- 4. Get final geometry and check validity
   local final_config = api.nvim_win_get_config(win_id)
   if final_config and final_config.width and final_config.height and final_config.row and final_config.col then
@@ -254,7 +199,7 @@ function M.create_popup(opts)
   -- 5. Add to Stack (keymap info is now handled by the tracker)
   local stack_item = {
     win_id = win_id,
-    buf_id = target_bufnr,
+    buf_id = opts.target_bufnr,
     z_index = win_config.zindex,
     width = width,
     height = height,
