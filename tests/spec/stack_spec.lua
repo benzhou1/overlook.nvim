@@ -5,8 +5,9 @@ local orig_api = {}
 local orig_deepcopy = nil
 local mock_call_args = {}
 
--- Mocked keymap storage (per buffer)
-local mocked_keymaps = {}
+-- Save original keymap APIs
+local orig_keymap_set = vim.keymap.set
+local orig_keymap_del = vim.keymap.del
 
 -- Helper to mock vim.api functions
 local function mock_api(name, mock_fn)
@@ -40,7 +41,6 @@ local function setup_mocks_and_stack()
   -- Reset stack state
   stack.stack = {}
   stack.original_win_id = nil
-  mocked_keymaps = {} -- Reset mocked keymaps
 
   -- Default Mocks for stack tests
   mock_api("nvim_win_is_valid", function(win_id)
@@ -58,57 +58,24 @@ local function setup_mocks_and_stack()
     -- Simulate window removal for subsequent nvim_win_is_valid calls within the same test?
     -- For simplicity, let's assume nvim_win_is_valid remains true unless explicitly mocked otherwise in a test.
   end)
-  mock_api("nvim_buf_get_keymap", function(bufnr, mode)
-    mock_call_args.nvim_buf_get_keymap_calls = mock_call_args.nvim_buf_get_keymap_calls + 1
-    local buffer_maps = mocked_keymaps[bufnr] or {}
-    local mode_maps = buffer_maps[mode] or {}
-    -- Return a copy to avoid modifying mock state directly
-    local result = {}
-    for _, map in ipairs(mode_maps) do
-      table.insert(result, vim.deepcopy(map))
-    end
-    return result
-  end)
-  mock_api("nvim_buf_set_keymap", function(bufnr, mode, lhs, rhs, opts)
-    mocked_keymaps[bufnr] = mocked_keymaps[bufnr] or {}
-    mocked_keymaps[bufnr][mode] = mocked_keymaps[bufnr][mode] or {}
-    -- Remove existing map for same lhs/mode first
-    local found_idx = nil
-    for i, existing_map in ipairs(mocked_keymaps[bufnr][mode]) do
-      if existing_map.lhs == lhs then
-        found_idx = i
-        break
-      end
-    end
-    if found_idx then
-      table.remove(mocked_keymaps[bufnr][mode], found_idx)
-    end
-    -- Add the new map
-    local map_data = vim.deepcopy(opts)
-    map_data.lhs = lhs
-    map_data.rhs = rhs
-    map_data.noremap = opts.noremap and 1 or 0 -- Convert boolean back
-    map_data.silent = opts.silent and 1 or 0
-    map_data.script = opts.script and 1 or 0
-    map_data.expr = opts.expr and 1 or 0
-    table.insert(mocked_keymaps[bufnr][mode], map_data)
-    table.insert(mock_call_args.nvim_buf_set_keymap, { bufnr = bufnr, mode = mode, lhs = lhs, rhs = rhs, opts = opts })
-  end)
-  mock_api("nvim_buf_del_keymap", function(bufnr, mode, lhs)
-    mocked_keymaps[bufnr] = mocked_keymaps[bufnr] or {}
-    mocked_keymaps[bufnr][mode] = mocked_keymaps[bufnr][mode] or {}
-    local found_idx = nil
-    for i, map in ipairs(mocked_keymaps[bufnr][mode]) do
-      if map.lhs == lhs then
-        found_idx = i
-        break
-      end
-    end
-    if found_idx then
-      table.remove(mocked_keymaps[bufnr][mode], found_idx)
-    end
-    table.insert(mock_call_args.nvim_buf_del_keymap, { bufnr = bufnr, mode = mode, lhs = lhs })
-  end)
+  -- Mock keymap.set and keymap.del to capture plugin calls
+  vim.keymap.set = function(mode, lhs, rhs, opts)
+    table.insert(mock_call_args.nvim_buf_set_keymap, {
+      bufnr = opts.buffer,
+      mode = mode,
+      lhs = lhs,
+      rhs = rhs,
+      opts = opts,
+    })
+  end
+  vim.keymap.del = function(mode, lhs, opts)
+    table.insert(mock_call_args.nvim_buf_del_keymap, {
+      bufnr = opts.buffer,
+      mode = mode,
+      lhs = lhs,
+      opts = opts,
+    })
+  end
 
   -- Mock vim.deepcopy as close_all uses it
   if vim.deepcopy then
@@ -140,6 +107,9 @@ describe("overlook.stack", function()
     end
     orig_api = {}
     orig_deepcopy = nil
+    -- Restore keymap.set and keymap.del
+    vim.keymap.set = orig_keymap_set
+    vim.keymap.del = orig_keymap_del
     -- No need to reset stack state here, before_each handles it
   end)
 
@@ -454,24 +424,21 @@ describe("overlook.stack", function()
         local config_mod = require("overlook.config")
         config_mod.options.ui.keys = { close = close_key }
         -- Setup initial state for keymap tests
-        mocked_keymaps = {}
         stack.create_tracker_entry(buf1, original_map_buf1) -- Buffer 1 has original map, ref 1
         stack.increment_tracker_refcount(buf1) -- Increment to ref 2 (simulating two popups)
         stack.create_tracker_entry(buf2, nil) -- Buffer 2 has no original map, ref 1
         -- Simulate the temporary map being set on both buffers
-        vim.api.nvim_buf_set_keymap(
-          buf1,
+        vim.keymap.set(
           "n",
           close_key,
           temp_map_rhs,
-          { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
+          { buffer = buf1, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
         )
-        vim.api.nvim_buf_set_keymap(
-          buf2,
+        vim.keymap.set(
           "n",
           close_key,
           temp_map_rhs,
-          { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
+          { buffer = buf2, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
         )
         -- Reset API call args specifically for these tests
         mock_call_args.nvim_buf_del_keymap = {}
@@ -546,23 +513,20 @@ describe("overlook.stack", function()
         local config_mod = require("overlook.config")
         config_mod.options.ui.keys = { close = close_key }
         -- Setup initial state for keymap tests
-        mocked_keymaps = {}
         stack.create_tracker_entry(buf1, original_map_buf1) -- Buffer 1 has original map, ref 1
         stack.create_tracker_entry(buf2, nil) -- Buffer 2 has no original map, ref 1
         -- Simulate the temporary map being set on both buffers
-        vim.api.nvim_buf_set_keymap(
-          buf1,
+        vim.keymap.set(
           "n",
           close_key,
           temp_map_rhs,
-          { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
+          { buffer = buf1, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
         )
-        vim.api.nvim_buf_set_keymap(
-          buf2,
+        vim.keymap.set(
           "n",
           close_key,
           temp_map_rhs,
-          { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
+          { buffer = buf2, noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
         )
         -- Reset API call args specifically for these tests
         mock_call_args.nvim_buf_del_keymap = {}

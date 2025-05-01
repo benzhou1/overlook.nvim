@@ -13,6 +13,7 @@ local function restore_original_map(bufnr, original_map_details)
     return
   end
   local restore_opts = {
+    buffer = bufnr,
     noremap = original_map_details.map.noremap,
     silent = original_map_details.map.silent,
     script = original_map_details.map.script,
@@ -21,7 +22,7 @@ local function restore_original_map(bufnr, original_map_details)
     desc = original_map_details.map.desc,
   }
   local rhs = original_map_details.map.rhs
-  vim.api.nvim_buf_set_keymap(bufnr, original_map_details.mode, original_map_details.key, rhs or "", restore_opts)
+  vim.keymap.set(original_map_details.mode, original_map_details.key, rhs or "", restore_opts)
 end
 
 ---@class OverlookStackItem
@@ -104,7 +105,7 @@ function M.handle_win_close(closed_win_id)
     if tracker_entry.ref_count <= 0 then
       -- Last reference, delete temp map and restore original
       local close_key = (require("overlook.config").options.ui.keys or {}).close or "q"
-      pcall(vim.api.nvim_buf_del_keymap, closed_bufnr, "n", close_key)
+      pcall(vim.keymap.del, "n", close_key, { buffer = closed_bufnr })
 
       -- Restore original if it exists
       if tracker_entry.original_map_details then
@@ -172,8 +173,8 @@ function M.close_all(force_close)
   -- Delete temporary maps and restore original keymaps using the tracker
   local close_key = (require("overlook.config").options.ui.keys or {}).close or "q"
   for bufnr, entry in pairs(buffer_keymap_tracker) do
-    -- Delete the temporary map regardless of ref count, as we are closing all
-    pcall(vim.api.nvim_buf_del_keymap, bufnr, "n", close_key)
+    -- Delete the temporary map using Lua keymap API
+    pcall(vim.keymap.del, "n", close_key, { buffer = bufnr })
     -- Restore the original map if one was stored
     if entry.original_map_details then
       restore_original_map(bufnr, entry.original_map_details)

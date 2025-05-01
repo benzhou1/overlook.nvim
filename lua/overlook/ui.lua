@@ -217,13 +217,13 @@ function M.create_popup(opts)
 
     -- Set our temporary mapping
     local close_cmd = "<Cmd>close<CR>"
-    vim.api.nvim_buf_set_keymap(
-      target_bufnr,
-      "n",
-      close_key,
-      close_cmd,
-      { noremap = true, silent = true, nowait = true, desc = "Overlook: Close popup" }
-    )
+    vim.keymap.set("n", close_key, close_cmd, {
+      buffer = target_bufnr,
+      noremap = true,
+      silent = true,
+      nowait = true,
+      desc = "Overlook: Close popup",
+    })
 
     -- Create tracker entry
     stack_module.create_tracker_entry(target_bufnr, original_map_details)
