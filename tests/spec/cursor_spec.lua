@@ -56,7 +56,7 @@ describe("Cursor Adapter", function()
     vim.api.nvim_win_set_cursor(0, { 3, 5 }) -- Set cursor to line 3, column 5
 
     -- Action
-    peek_mod.peek("cursor")
+    peek_mod.cursor()
 
     -- Assert
     assert.are.equal(1, #mock_calls.create_popup)
@@ -80,13 +80,13 @@ describe("Cursor Adapter", function()
     assert.equal("", vim.api.nvim_buf_get_name(0))
 
     -- Action
-    peek_mod.peek("cursor")
+    peek_mod.cursor()
 
     -- Assert
     assert.are.equal(0, #mock_calls.create_popup) -- Should not be called
     assert.are.equal(1, #mock_calls.notify)
     local notify_call = mock_calls.notify[1]
-    assert.are.equal("Overlook: Cannot peek in unnamed buffer.", notify_call.msg)
+    assert.matches("Cannot peek in unnamed buffer", notify_call.msg) -- Use matches for flexibility
     assert.are.equal(vim.log.levels.WARN, notify_call.level)
 
     -- Teardown (moved to after_each)

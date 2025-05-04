@@ -1,22 +1,6 @@
 local api = vim.api
+
 local M = {}
-
--- Cache required modules
-
-local config_mod ---@type table | nil
-local stack_mod ---@type table | nil
-local function config() -- Revert to only return ui options
-  if not config_mod then
-    config_mod = require("overlook.config")
-  end
-  return (config_mod and config_mod.options and config_mod.options.ui)
-end
-local function stack()
-  if not stack_mod then
-    stack_mod = require("overlook.stack")
-  end
-  return stack_mod
-end
 
 local group_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
 
@@ -34,14 +18,16 @@ local border_definitions = {
 ---@param opts table Options: { target_bufnr: integer, lnum: integer, col: integer, title?: string }
 ---@return { win_id: integer, buf_id: integer } | nil
 function M.create_popup(opts)
-  local ui_opts = config() -- Revert to getting only ui_opts
+  local config = require("overlook.config").get()
+  local stack = require("overlook.stack")
+  local ui_opts = config.ui
   if not api.nvim_buf_is_valid(opts.target_bufnr) then
     return nil
   end
 
   -- 1. Calculate Window Config
   local win_config = { relative = "win", style = "minimal", focusable = true }
-  local current_stack_size = stack().size()
+  local current_stack_size = stack.size()
   win_config.zindex = ui_opts.z_index_base + current_stack_size
 
   local width, height, row, col_abs
@@ -121,7 +107,6 @@ function M.create_popup(opts)
       win_config.row = cursor_relative_screen_row + ui_opts.row_offset
 
       -- Make height one row smaller, respecting min_height
-      height = height - 1
       height = math.max(height, ui_opts.min_height)
     end
 
@@ -129,7 +114,7 @@ function M.create_popup(opts)
     win_config.height = height
   else
     -- Subsequent popups
-    local prev = stack().top()
+    local prev = stack.top()
 
     if not prev or prev.width == nil or prev.height == nil or prev.row == nil or prev.col == nil then
       return nil
@@ -157,7 +142,7 @@ function M.create_popup(opts)
   win_config.title_pos = "center"
 
   local original_win_id = nil
-  if stack().size() == 0 then
+  if stack.size() == 0 then
     original_win_id = vim.api.nvim_get_current_win()
   end
 
@@ -207,7 +192,7 @@ function M.create_popup(opts)
     col = col_abs,
     original_win_id = original_win_id,
   }
-  stack().push(stack_item) -- Push item without keymap details
+  stack.push(stack_item) -- Push item without keymap details
 
   -- 6. Setup WinClosed Autocommand
   api.nvim_create_autocmd("WinClosed", {

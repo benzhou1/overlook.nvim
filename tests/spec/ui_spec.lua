@@ -44,7 +44,14 @@ local function setup_mocks()
     stack_row_offset = 1,
     stack_col_offset = 1,
   }
-  local mock_config_mod = { options = { ui = mock_ui_config } }
+  local mock_config_options = { ui = mock_ui_config }
+  -- Create a mock module with a 'get' function
+  local mock_config_mod = {
+    options = mock_config_options, -- Keep options for direct access if needed
+    get = function()
+      return mock_config_options -- Return the options table
+    end,
+  }
   package.loaded["overlook.config"] = mock_config_mod
 
   -- Mock stack module FIRST (Use a plain table with manual tracking if needed)
@@ -194,8 +201,7 @@ describe("overlook.ui", function()
     assert.is_not_nil(result)
     assert.are.equal(1001, result.win_id)
     assert.are.equal(1, result.buf_id)
-    local stack_mod = package.loaded["overlook.stack"]
-    assert.is_true(stack_mod._push_called_flag())
+    assert.is_not_nil(mock_call_args.stack_push)
     assert.is_not_nil(mock_call_args.nvim_open_win)
   end)
 
@@ -324,10 +330,10 @@ describe("overlook.ui", function()
     assert.is_not_nil(mock_call_args.nvim_open_win)
     local win_config = mock_call_args.nvim_open_win.config
     -- Calculation based on code walkthrough (assuming min_height=5 due to cache):
-    -- final content width = 4
-    -- final content height = 3 -> clamped by min_height(5) -> 5
-    assert.are.equal(10, win_config.width) -- Expected: 10 (clamped by available space), Actual was: 10
-    assert.are.equal(5, win_config.height) -- Expect 5 due to cached default min_height
+    -- final content width = 4 -> clamped by min_width(15) -> 15
+    -- final content height = 3 -> clamped by min_height(7) -> 7 (if override works) or 5 (if cached)
+    assert.are.equal(15, win_config.width) -- Corrected expectation based on min_width override
+    assert.are.equal(7, win_config.height) -- Corrected expectation based on working min_height override
   end)
 
   it("should return nil and restore focus if nvim_open_win fails", function()

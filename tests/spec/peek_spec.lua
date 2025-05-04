@@ -63,7 +63,7 @@ describe("overlook.peek", function()
       return nil
     end
 
-    peek_mod.peek("marks", mark_char)
+    peek_mod.marks(mark_char)
 
     -- Check adapter was called correctly
     assert.are.equal(1, #marks_get_calls)
@@ -92,7 +92,7 @@ describe("overlook.peek", function()
     package.loaded["overlook.peek"] = nil
     peek_mod = require("overlook.peek")
 
-    peek_mod.peek("marks", "a")
+    peek_mod.marks("a")
 
     assert.are.equal(1, #notify_calls)
     assert.matches("Invalid adapter type or adapter missing get().*marks", notify_calls[1].msg)
@@ -109,7 +109,7 @@ describe("overlook.peek", function()
       return nil -- Simulate adapter handling an error/no data
     end
 
-    peek_mod.peek("marks", "z")
+    peek_mod.marks("z")
 
     assert.are.equal(1, #marks_get_calls) -- Adapter get should still be called
     assert.are.equal(0, #create_popup_calls) -- UI should NOT be called

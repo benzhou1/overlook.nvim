@@ -1,13 +1,5 @@
 local M = {}
 
-local ui_mod ---@type table | nil
-local function ui()
-  if not ui_mod then
-    ui_mod = require("overlook.ui")
-  end
-  return ui_mod
-end
-
 local adapters = {
   marks = require("overlook.adapter.marks"),
   definition = require("overlook.adapter.definition"),
@@ -17,7 +9,7 @@ local adapters = {
 --- Generic peek function that calls the appropriate adapter's get() method
 --- @param adapter_type string The type of adapter ('marks', 'definition', etc.)
 --- @param ... any Arguments to pass to the adapter's get() function
-function M.peek(adapter_type, ...)
+local function peek_with_adapters(adapter_type, ...)
   local adapter = adapters[adapter_type]
   if not adapter or type(adapter.get) ~= "function" then
     vim.notify(
@@ -29,13 +21,18 @@ function M.peek(adapter_type, ...)
 
   local opts = adapter.get(...)
   if not opts then
-    -- Adapter handled error or no data, message should have been shown by adapter
     return
   end
 
-  -- TODO: Validate opts table structure?
-
-  ui().create_popup(opts)
+  require("overlook.ui").create_popup(opts)
 end
+
+setmetatable(M, {
+  __index = function(_, key)
+    return function(...)
+      return peek_with_adapters(key, ...)
+    end
+  end,
+})
 
 return M
