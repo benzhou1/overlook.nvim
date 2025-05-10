@@ -168,7 +168,7 @@ function M.close_all(force_close)
   end
 
   -- Clean up the autocommand group to prevent leaks
-  pcall(api.nvim_del_augroup_by_name, "OverlookPopupClose")
+  pcall(api.nvim_clear_autocmds, { group = "OverlookPopupClose" })
 
   -- Explicitly update the keymap state after closing all windows and restoring focus
   -- Use vim.schedule to ensure this runs after Neovim has processed the focus change
