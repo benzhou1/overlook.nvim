@@ -18,7 +18,7 @@ function M.get()
 
   return {
     title = display_path,
-    target_bufnr = bufnum,
+    target_bufnr = vim.api.nvim_get_current_buf(),
     file_path = file_path,
     lnum = lnum,
     col = col,
