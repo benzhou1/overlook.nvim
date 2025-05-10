@@ -29,7 +29,7 @@ M.peek.mark = function()
 end
 
 M.close_all = function()
-  Stack.close_all()
+  Stack.clear()
 end
 
 --- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
@@ -43,7 +43,7 @@ M.promote_top_to_window = function(open_command)
   local buf_id_to_open = vim.api.nvim_get_current_buf()
 
   -- Close all overlook popups. This also clears the stack.
-  Stack.close_all()
+  Stack.clear()
 
   -- Ensure the buffer is still valid and positive before trying to open it
   if not buf_id_to_open or not vim.api.nvim_buf_is_valid(buf_id_to_open) then

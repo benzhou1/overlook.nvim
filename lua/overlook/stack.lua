@@ -96,7 +96,7 @@ function M.handle_win_close(closed_win_id)
         M.original_win_id = nil -- Clear original ID since stack should be empty now
       else
         -- If original is gone too, close everything remaining as a safety measure
-        M.close_all(true)
+        M.clear(true)
         M.original_win_id = nil -- Ensure it's cleared
       end
     end
@@ -132,10 +132,10 @@ function M.handle_win_close(closed_win_id)
   end)
 end
 
--- close_all() - Modified to use eventignore
+-- clear() - Modified to use eventignore
 --- Closes all overlook popups gracefully using eventignore.
 ---@param force_close? boolean If true, uses force flag when closing windows.
-function M.close_all(force_close)
+function M.clear(force_close)
   local original_win_to_restore = M.original_win_id
   local stack_copy = vim.deepcopy(M.stack) -- Copy stack to iterate safely
 

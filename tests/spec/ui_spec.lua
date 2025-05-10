@@ -73,7 +73,7 @@ local function setup_mocks()
   end
   mock_stack_mod.find_by_win = stack.find_by_win
   mock_stack_mod.handle_win_close = stack.handle_win_close
-  mock_stack_mod.close_all = stack.close_all
+  mock_stack_mod.close_all = stack.clear
   mock_stack_mod._push_called_flag = function()
     return stack_push_called
   end

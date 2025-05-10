@@ -314,8 +314,8 @@ describe("overlook.stack", function()
       end)
 
       -- Mock stack.close_all to track if it was called
-      local original_close_all = stack.close_all
-      stack.close_all = function(force)
+      local original_clear = stack.clear
+      stack.clear = function(force)
         mock_call_args.close_all_called = true
         assert.is_true(force) -- Check that force=true is passed
         -- Optionally call original or a simplified mock if needed for other assertions
@@ -332,7 +332,7 @@ describe("overlook.stack", function()
       assert.is_true(mock_call_args.close_all_called) -- Should have called close_all
 
       -- Restore
-      stack.close_all = original_close_all
+      stack.clear = original_clear
     end)
 
     describe("on_stack_empty hook", function()
@@ -444,7 +444,7 @@ describe("overlook.stack", function()
       local item2 = { win_id = 2 }
       stack.push(item1)
       stack.push(item2)
-      stack.close_all()
+      stack.clear()
       run_scheduled() -- Run the potential keymap update after close_all
       assert.are.same({ { id = 2, force = false }, { id = 1, force = false } }, mock_call_args.nvim_win_close)
     end)
@@ -452,7 +452,7 @@ describe("overlook.stack", function()
     it("should pass force_close flag to nvim_win_close", function()
       local item1 = { win_id = 1 }
       stack.push(item1)
-      stack.close_all(true)
+      stack.clear(true)
       run_scheduled() -- Run the potential keymap update after close_all
       assert.are.same({ { id = 1, force = true } }, mock_call_args.nvim_win_close)
     end)
@@ -462,7 +462,7 @@ describe("overlook.stack", function()
       stack.push(item1)
       -- Mock close to not actually trigger handle_win_close
       mock_api("nvim_win_close", function(_, _) end)
-      stack.close_all()
+      stack.clear()
       run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size())
     end)
@@ -471,7 +471,7 @@ describe("overlook.stack", function()
       -- Setup with original window ID
       local item1 = { win_id = 1, original_win_id = 1000 }
       stack.push(item1)
-      stack.close_all()
+      stack.clear()
       run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size()) -- Stack should be empty
       assert.are.same({ 1000 }, mock_call_args.nvim_set_current_win) -- Check focus call
@@ -481,7 +481,7 @@ describe("overlook.stack", function()
       -- Setup without original window ID
       local item1 = { win_id = 1 }
       stack.push(item1)
-      stack.close_all()
+      stack.clear()
       run_scheduled() -- Run the potential keymap update after close_all
       assert.are.equal(0, stack.size())
       assert.are.same({}, mock_call_args.nvim_set_current_win) -- No focus call expected
@@ -504,7 +504,7 @@ describe("overlook.stack", function()
       -- Mock the state AFTER close: focus moves to original window (1000) (via default mock update)
 
       -- Act: Close all windows
-      stack.close_all()
+      stack.clear()
 
       -- Simulate running the scheduled function
       run_scheduled()
