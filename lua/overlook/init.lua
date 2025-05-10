@@ -9,7 +9,7 @@ local function setup_autocmd()
     group = augroup,
     pattern = "*",
     callback = function()
-      vim.schedule(state.update_keymap_state)
+      vim.schedule(state.update_keymap)
     end,
   })
 

@@ -122,7 +122,7 @@ function M.handle_win_close(closed_win_id)
   -- Explicitly update the keymap state after handling window close and focus change
   -- Use vim.schedule to ensure this runs after Neovim has processed the focus change
   vim.schedule(function()
-    require("overlook.state").update_keymap_state()
+    require("overlook.state").update_keymap()
   end)
 end
 
@@ -173,7 +173,7 @@ function M.close_all(force_close)
   -- Explicitly update the keymap state after closing all windows and restoring focus
   -- Use vim.schedule to ensure this runs after Neovim has processed the focus change
   vim.schedule(function()
-    require("overlook.state").update_keymap_state()
+    require("overlook.state").update_keymap()
   end)
 end
 

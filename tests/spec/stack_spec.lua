@@ -416,7 +416,7 @@ describe("overlook.stack", function()
 
       -- Simulate state where popup (win 2) is focused and keymap was set
       current_win_override = 2 -- Use override variable
-      state.update_keymap_state() -- Use state module function
+      state.update_keymap()
       -- Reset mocks potentially affected by the setup run, except for the keymap state
       mock_call_args.nvim_buf_get_name = {}
       assert.are.equal(1, #mock_call_args.keymap_set) -- Verify setup call worked
@@ -494,7 +494,7 @@ describe("overlook.stack", function()
 
       -- Simulate state where popup (win 1) is focused and keymap was set
       current_win_override = 1 -- Use override variable
-      state.update_keymap_state() -- Use state module function
+      state.update_keymap()
       -- Reset mocks potentially affected by the setup run
       mock_call_args.nvim_buf_get_name = {}
       assert.are.equal(1, #mock_call_args.keymap_set) -- Verify setup call worked

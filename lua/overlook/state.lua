@@ -51,7 +51,7 @@ local function find_original_map(bufnr, mode, lhs)
 end
 
 ---Handles updating the dynamic 'close' keymap based on focus and stack state.
-function M.update_keymap_state()
+function M.update_keymap()
   -- Safeguard for tests where vim.api might not be ready immediately
   if not vim.api then
     return
