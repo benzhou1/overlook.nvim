@@ -3,6 +3,7 @@ local M = {}
 ---@alias OverlookBorderStyle
 ---| "none"
 ---| "single"
+---| "bold"
 ---| "double"
 ---| "rounded"
 ---| "solid"

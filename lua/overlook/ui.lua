@@ -4,16 +4,6 @@ local M = {}
 
 local group_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
 
--- Define common border characters directly
-local border_definitions = {
-  none = { "", "", "", "", "", "", "", "" },
-  single = { "┌", "─", "┐", "│", "┘", "─", "└", "│" },
-  double = { "╔", "═", "╗", "║", "╝", "═", "╚", "║" },
-  rounded = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-  solid = { "█", "█", "█", "█", "█", "█", "█", "█" },
-  shadow = { " ", " ", " ", " ", "▀", "▀", "▀", " " },
-}
-
 ---Creates and opens a floating window viewing the target buffer.
 ---@param opts table Options: { target_bufnr: integer, lnum: integer, col: integer, title?: string }
 ---@return { win_id: integer, buf_id: integer } | nil
@@ -137,7 +127,7 @@ function M.create_popup(opts)
     win_config.col = col_abs
   end
 
-  win_config.border = border_definitions[ui_opts.border] or border_definitions.single
+  win_config.border = ui_opts.border or vim.o.winborder or "rounded"
   win_config.title = opts.title or "default title"
   win_config.title_pos = "center"
 

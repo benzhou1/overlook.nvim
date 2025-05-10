@@ -285,17 +285,6 @@ describe("overlook.ui", function()
     assert.are.equal(51, win_config.zindex) -- Incremented zindex
   end)
 
-  it("should use the specified border type", function()
-    -- Arrange: Default border is now double in setup_mocks
-    local expected_border = { "╔", "═", "╗", "║", "╝", "═", "╚", "║" }
-    -- Act
-    local result = ui.create_popup { target_bufnr = 1, lnum = 1, col = 1 }
-    -- Assert
-    assert.is_not_nil(result)
-    assert.is_not_nil(mock_call_args.nvim_open_win)
-    assert.are.same(expected_border, mock_call_args.nvim_open_win.config.border)
-  end)
-
   it("should respect minimum width and height", function()
     -- Arrange: Make window very small so size_ratio calc is below min
     orig_api.nvim_win_get_height = vim.api.nvim_win_get_height
