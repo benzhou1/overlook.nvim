@@ -32,4 +32,39 @@ M.close_all = function()
   Stack.close_all()
 end
 
+--- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
+--- @param open_command string Vim command to open the window (e.g., "vsplit", "split", "tabnew").
+M.promote_top_to_window = function(open_command)
+  if Stack.empty() or not vim.w.is_overlook_popup then
+    vim.notify("Overlook: No popup to promote.", vim.log.levels.INFO)
+    return
+  end
+
+  local buf_id_to_open = vim.api.nvim_get_current_buf()
+
+  -- Close all overlook popups. This also clears the stack.
+  Stack.close_all()
+
+  -- Ensure the buffer is still valid and positive before trying to open it
+  if not buf_id_to_open or not vim.api.nvim_buf_is_valid(buf_id_to_open) then
+    vim.notify(
+      string.format("Overlook Error: Buffer to promote is invalid (ID: %s).", tostring(buf_id_to_open)),
+      vim.log.levels.ERROR
+    )
+    return
+  end
+
+  -- Open the buffer in the specified way
+  local cmd = string.format("%s | buffer %d", open_command, buf_id_to_open)
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local ok, err = pcall(vim.cmd, cmd)
+  if not ok then
+    vim.notify(
+      string.format("Overlook Error: Failed to execute command '%s': %s", cmd, tostring(err)),
+      vim.log.levels.ERROR
+    )
+    return -- Ensure we don't proceed if window creation failed
+  end
+end
+
 return M

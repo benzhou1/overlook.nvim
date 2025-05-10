@@ -146,6 +146,9 @@ function M.create_popup(opts)
     return nil
   end
 
+  -- Register with the state manager for style handling
+  require("overlook.state").register_overlook_popup(win_id, opts.target_bufnr)
+
   -- 3. Post-Open Setup
   api.nvim_win_set_cursor(win_id, { opts.lnum, math.max(0, opts.col - 1) })
   vim.api.nvim_win_call(win_id, function()

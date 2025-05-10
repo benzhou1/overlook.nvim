@@ -4,6 +4,8 @@ local Stack = require("overlook.stack")
 
 local M = {}
 
+M.touched_by_overlook = {} -- bufnr -> true
+
 -- State for dynamic keymap
 local currently_mapped_info = {
   bufnr = nil,
@@ -167,6 +169,99 @@ function M.update_title()
       vim.notify("Overlook: Failed to get window config for title", vim.log.levels.WARN)
     end
   end
+end
+
+--- Registers an Overlook popup window and marks its buffer as touched.
+---@param winid integer The window ID of the Overlook popup.
+---@param bufnr integer The buffer number displayed in the popup.
+function M.register_overlook_popup(winid, bufnr)
+  if not api.nvim_win_is_valid(winid) or not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  M.touched_by_overlook[bufnr] = true
+  -- Set a window variable to identify Overlook popups
+  pcall(api.nvim_win_set_var, winid, "is_overlook_popup", true)
+end
+
+--- Cleans up tracking for a buffer when it's deleted.
+---@param bufnr integer
+function M.cleanup_touched_buffer(bufnr)
+  if M.touched_by_overlook[bufnr] then
+    M.touched_by_overlook[bufnr] = nil
+  end
+end
+
+local function restore_options()
+  -- This list can be shared or made more configurable if needed
+  vim.wo.number = vim.go.number
+  vim.wo.relativenumber = vim.go.relativenumber
+  vim.wo.cursorline = vim.go.cursorline
+  vim.wo.cursorcolumn = vim.go.cursorcolumn
+  vim.wo.spell = vim.go.spell
+  vim.wo.list = vim.go.list
+  vim.wo.statuscolumn = vim.go.statuscolumn
+  vim.wo.colorcolumn = vim.go.colorcolumn
+  vim.wo.signcolumn = vim.go.signcolumn
+  vim.wo.foldcolumn = vim.go.foldcolumn
+  vim.wo.winhl = "" -- Clears window-specific highlights
+end
+
+--- Checks if a buffer displayed in a window needs its style restored,
+--- and applies the restoration if necessary.
+--- Intended to be called from a BufWinEnter autocommand.
+function M.handle_style_for_buffer_in_window()
+  local current_winid = api.nvim_get_current_win()
+  local current_bufnr = api.nvim_get_current_buf()
+
+  if not api.nvim_buf_is_valid(current_bufnr) or not api.nvim_win_is_valid(current_winid) then
+    return
+  end
+
+  -- Check if this buffer was touched by Overlook
+  if not M.touched_by_overlook[current_bufnr] then
+    return
+  end
+
+  if vim.w.is_overlook_popup then
+    return -- Don't restore options on Overlook's own popups
+  end
+
+  -- If we're here, a "touched" buffer is in a non-Overlook window. Restore its style.
+
+  local ignored_filetypes = {
+    help = true,
+    qf = true,
+    NvimTree = true, -- Common file explorer
+    fugitive = true, -- Git interface
+    fzf = true, -- fzf itself
+    TelescopePrompt = true,
+    TelescopeResults = true,
+    packer = true,
+    lazy = true,
+    man = true,
+    -- gitcommit = true, -- Typically edited with standard options
+    -- gitrebase = true, -- Typically edited with standard options
+    -- Add any other filetypes that have their own distinct UI here
+  }
+
+  local ignored_buftypes = {
+    nofile = true,
+    nowrite = true,
+    terminal = true,
+    prompt = true,
+    acwrite = true,
+    -- popup = true, -- though our is_overlook_popup check should catch Overlook's own
+  }
+
+  if ignored_filetypes[vim.bo.filetype] or ignored_buftypes[vim.bo.buftype] then
+    return -- Don't restore styles for these types
+  end
+
+  restore_options()
+
+  -- Optional: Unmark the buffer after first restoration if you only want to do it once
+  -- M.touched_by_overlook[current_bufnr] = nil
+  -- For now, let's keep it marked so it's always restored if opened in a non-overlook window.
 end
 
 return M

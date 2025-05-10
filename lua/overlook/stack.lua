@@ -24,6 +24,12 @@ function M.size()
   return #M.stack
 end
 
+---Returns true if the stack is empty, false otherwise.
+---@return boolean
+function M.empty()
+  return M.size() == 0
+end
+
 ---Returns the info for the top popup without removing it.
 ---@return OverlookStackItem | nil
 function M.top()
