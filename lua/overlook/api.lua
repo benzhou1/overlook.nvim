@@ -33,8 +33,8 @@ M.close_all = function()
 end
 
 --- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
---- @param open_command string Vim command to open the window (e.g., "vsplit", "split", "tabnew").
-M.promote_top_to_window = function(open_command)
+--- @param open_command string Command to run when promoting the popup to a window.
+local function promote_popup_to_window(open_command)
   if Stack.empty() or not vim.w.is_overlook_popup then
     vim.notify("Overlook: No popup to promote.", vim.log.levels.INFO)
     return
@@ -55,7 +55,7 @@ M.promote_top_to_window = function(open_command)
   end
 
   -- Open the buffer in the specified way
-  local cmd = string.format("%s | buffer %d", open_command, buf_id_to_open)
+  local cmd = string.format("%s %d", open_command, buf_id_to_open)
   ---@diagnostic disable-next-line: param-type-mismatch
   local ok, err = pcall(vim.cmd, cmd)
   if not ok then
@@ -65,6 +65,18 @@ M.promote_top_to_window = function(open_command)
     )
     return -- Ensure we don't proceed if window creation failed
   end
+end
+
+--- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
+--- @param open_command string Vim command to open the window (e.g., "vsplit", "split", "tabnew").
+M.promote_top_to_window = function(open_command)
+  local cmd = string.format("%s | buffer", open_command)
+  promote_popup_to_window(cmd)
+end
+
+--- Promotes the top Overlook popup to the original window.
+M.promote_top_to_original_window = function()
+  promote_popup_to_window("buffer")
 end
 
 return M
