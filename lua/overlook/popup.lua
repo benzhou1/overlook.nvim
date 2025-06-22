@@ -3,10 +3,6 @@ local Config = require("overlook.config").get()
 local Stack = require("overlook.stack")
 local State = require("overlook.state")
 
--- Autocommand group for managing WinClosed events for popups
--- Defined once per module load.
-local augroup_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
-
 ---@class OverlookPopup
 ---@field opts OverlookPopupOptions
 ---@field win_id integer Neovim window ID for the popup
@@ -41,7 +37,6 @@ function M.new(opts)
   end
 
   this:configure_opened_window_details()
-  this:create_close_autocommand()
 
   this.actual_win_config = api.nvim_win_get_config(this.win_id)
 
@@ -204,22 +199,6 @@ function Popup:configure_opened_window_details()
   vim.api.nvim_win_call(self.win_id, function()
     vim.cmd("normal! zz")
   end)
-end
-
---- Creates the WinClosed autocommand for this popup instance.
-function Popup:create_close_autocommand()
-  local win_id_for_closure = self.win_id -- Capture for the closure
-  api.nvim_create_autocmd("WinClosed", {
-    group = augroup_id, -- Use the module-local augroup
-    pattern = tostring(self.win_id),
-    once = true,
-    callback = function(args)
-      local closed_win_id = tonumber(args.match)
-      if closed_win_id and closed_win_id == win_id_for_closure then
-        Stack.handle_win_close(closed_win_id)
-      end
-    end,
-  })
 end
 
 return M

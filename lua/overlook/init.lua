@@ -5,6 +5,24 @@ local function setup_autocmd()
 
   -- Setup Autocommands for dynamic keymap
   local augroup = vim.api.nvim_create_augroup("OverlookStateManagement", { clear = true })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = augroup,
+    callback = function(args)
+      local winid = tonumber(args.match)
+      if not winid then
+        vim.notify("Overlook: Invalid winid in WinClosed autocmd", vim.log.levels.ERROR)
+        return
+      end
+
+      local stacks = require("overlook.stack").stack_instances
+      for _, stack in pairs(stacks) do
+        if stack:top() and stack:top().win_id == winid then
+          stack:on_close()
+          break
+        end
+      end
+    end,
+  })
   vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
     group = augroup,
     pattern = "*",
