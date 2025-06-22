@@ -42,8 +42,8 @@ M.options = {
     border = "rounded",
 
     -- Base z-index for the first popup. Subsequent popups increment from here.
-    -- Higher values appear visually on top. Should be high enough to be above normal floats.
-    z_index_base = 100,
+    -- Higher values appear visually on top.
+    z_index_base = 30,
 
     -- Initial row offset relative to the cursor for the *first* popup.
     row_offset = 0,
