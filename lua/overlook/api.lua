@@ -68,7 +68,7 @@ local function promote_popup_to_window(open_command)
 end
 
 --- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
---- @param open_command string Vim command to open the window (e.g., "vsplit", "split", "tabnew").
+--- @param open_command 'vsplit'|'split'|'tabnew' Vim command to open the window.
 M.promote_top_to_window = function(open_command)
   local cmd = string.format("%s | buffer", open_command)
   promote_popup_to_window(cmd)
