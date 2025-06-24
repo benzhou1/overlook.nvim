@@ -40,12 +40,12 @@ local function setup_mocks()
     table.insert(mock_call_args.nvim_get_current_win, {})
     return 1 -- Default: assume tests run in window 1
   end)
-  mock_api("nvim_win_get_buf", function(win_id)
-    table.insert(mock_call_args.nvim_win_get_buf, { win_id = win_id })
-    if win_id == 1 then
+  mock_api("nvim_win_get_buf", function(winid)
+    table.insert(mock_call_args.nvim_win_get_buf, { winid = winid })
+    if winid == 1 then
       return 10
     end -- Default: win 1 has buf 10
-    if win_id == 2 then
+    if winid == 2 then
       return 20
     end
     return 99
@@ -63,13 +63,13 @@ local function setup_mocks()
     end
     return "" -- Default: unnamed buffer
   end)
-  mock_api("nvim_win_get_config", function(win_id)
-    table.insert(mock_call_args.nvim_win_get_config, { win_id = win_id })
+  mock_api("nvim_win_get_config", function(winid)
+    table.insert(mock_call_args.nvim_win_get_config, { winid = winid })
     -- Return a basic default config
     return { border = "single", title = "Default Title" }
   end)
-  mock_api("nvim_win_set_config", function(win_id, config)
-    table.insert(mock_call_args.nvim_win_set_config, { win_id = win_id, config = config })
+  mock_api("nvim_win_set_config", function(winid, config)
+    table.insert(mock_call_args.nvim_win_set_config, { winid = winid, config = config })
     -- Simulate success
   end)
 
@@ -104,7 +104,7 @@ describe("overlook.state", function()
         return 1
       end)
       stack.top = function()
-        return { win_id = 1, buf_id = 10 }
+        return { winid = 1, buf_id = 10 }
       end
       mock_api("nvim_buf_get_name", function(buf_id)
         return "/some/path/my_file.py"
@@ -125,7 +125,7 @@ describe("overlook.state", function()
       -- Assert
       assert.are.equal(1, #mock_call_args.nvim_win_set_config)
       local args = mock_call_args.nvim_win_set_config[1]
-      assert.are.equal(1, args.win_id)
+      assert.are.equal(1, args.winid)
       assert.are.equal("my_file.py", args.config.title)
 
       -- Restore fnamemodify
@@ -138,7 +138,7 @@ describe("overlook.state", function()
         return 1
       end)
       stack.top = function()
-        return { win_id = 1, buf_id = 10 }
+        return { winid = 1, buf_id = 10 }
       end
       mock_api("nvim_buf_get_name", function(buf_id)
         return ""
@@ -150,7 +150,7 @@ describe("overlook.state", function()
       -- Assert
       assert.are.equal(1, #mock_call_args.nvim_win_set_config)
       local args = mock_call_args.nvim_win_set_config[1]
-      assert.are.equal(1, args.win_id)
+      assert.are.equal(1, args.winid)
       assert.are.equal("(No Name)", args.config.title)
     end)
 
@@ -160,7 +160,7 @@ describe("overlook.state", function()
         return 2
       end)
       stack.top = function()
-        return { win_id = 1, buf_id = 10 }
+        return { winid = 1, buf_id = 10 }
       end
 
       -- Act
@@ -192,9 +192,9 @@ describe("overlook.state", function()
         return 1
       end)
       stack.top = function()
-        return { win_id = 1, buf_id = 10 }
+        return { winid = 1, buf_id = 10 }
       end
-      mock_api("nvim_win_get_config", function(win_id)
+      mock_api("nvim_win_get_config", function(winid)
         error("Config error!")
       end)
 

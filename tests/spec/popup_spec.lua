@@ -41,9 +41,9 @@ local State = require("overlook.state")
 
 -- Test constants
 local TEST_CONSTANTS = {
-  DEFAULT_WIN_ID = 1000,
+  DEFAULT_WINID = 1000,
   DEFAULT_BUF_ID = 100,
-  POPUP_WIN_IDS = { 1001, 1002, 1003 },
+  POPUP_WINIDS = { 1001, 1002, 1003 },
   AUGROUP_ID = 123,
 
   -- Common window dimensions
@@ -70,7 +70,7 @@ local function setup_common_mocks()
   local api_mock = mock(vim.api, true)
 
   -- Standard window mocks
-  api_mock.nvim_get_current_win.returns(TEST_CONSTANTS.DEFAULT_WIN_ID)
+  api_mock.nvim_get_current_win.returns(TEST_CONSTANTS.DEFAULT_WINID)
   api_mock.nvim_win_get_position.returns { 0, 0 }
   api_mock.nvim_win_get_height.returns(TEST_CONSTANTS.STANDARD_WIN_HEIGHT)
   api_mock.nvim_win_get_width.returns(TEST_CONSTANTS.STANDARD_WIN_WIDTH)
@@ -79,7 +79,7 @@ local function setup_common_mocks()
 
   -- Popup creation mocks
   api_mock.nvim_buf_is_valid.returns(true)
-  api_mock.nvim_open_win.returns(TEST_CONSTANTS.POPUP_WIN_IDS[1])
+  api_mock.nvim_open_win.returns(TEST_CONSTANTS.POPUP_WINIDS[1])
   api_mock.nvim_win_get_config.returns {}
   api_mock.nvim_create_augroup.returns(TEST_CONSTANTS.AUGROUP_ID)
   api_mock.nvim_create_autocmd = stub()
@@ -135,7 +135,7 @@ describe("Popup:config_for_first_popup", function()
         focusable = true,
         width = 64,
         height = 12,
-        win = TEST_CONSTANTS.DEFAULT_WIN_ID,
+        win = TEST_CONSTANTS.DEFAULT_WINID,
         zindex = global_mock_config_data.ui.z_index_base,
         col = 11,
         row = 6,
@@ -143,7 +143,7 @@ describe("Popup:config_for_first_popup", function()
         title = "Overlook default title",
         title_pos = "center",
       }, win_config)
-      assert.are.equal(TEST_CONSTANTS.DEFAULT_WIN_ID, popup_instance.orginal_win_id)
+      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.original_winid)
     end)
 
     it("should calculate config correctly with winbar enabled", function()
@@ -153,7 +153,7 @@ describe("Popup:config_for_first_popup", function()
       assert.is_not_nil(popup_instance)
       local win_config = popup_instance.win_config
       assert.are.equal(6, win_config.row) -- Different row when winbar is enabled
-      assert.are.equal(TEST_CONSTANTS.DEFAULT_WIN_ID, popup_instance.orginal_win_id)
+      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.original_winid)
     end)
   end)
 
@@ -468,11 +468,11 @@ describe("Popup stack integration", function()
 
   it("should create stacked popup when stack is not empty", function()
     local mock_prev_item = {
-      win_id = TEST_CONSTANTS.POPUP_WIN_IDS[2],
+      winid = TEST_CONSTANTS.POPUP_WINIDS[2],
       width = 50,
       height = 10,
       buf_id = 2,
-      original_win_id = TEST_CONSTANTS.DEFAULT_WIN_ID,
+      original_winid = TEST_CONSTANTS.DEFAULT_WINID,
     }
 
     Stack.empty = stub().returns(false)
@@ -489,7 +489,7 @@ describe("Popup stack integration", function()
     assert.is_not_nil(popup_instance)
     assert.is_false(popup_instance.is_first_popup)
     assert.are.equal("Stacked Title", popup_instance.win_config.title)
-    assert.are.equal(mock_prev_item.win_id, popup_instance.win_config.win)
+    assert.are.equal(mock_prev_item.winid, popup_instance.win_config.win)
   end)
 
   it("should return nil if Stack.top() returns nil for stacked popup", function()

@@ -1,7 +1,7 @@
 local api = vim.api
 
 ---@class OverlookStack
----@field original_win_id integer The root original window ID for this stack.
+---@field original_winid integer The root original window ID for this stack.
 ---@field augroup_id integer The ID of the autocommand group for closing popups.
 ---@field items OverlookPopup[] Array of popup items.
 local Stack = {}
@@ -53,9 +53,9 @@ function Stack:on_close()
 
   -- Determine the window to focus next
   if not self:empty() then
-    pcall(api.nvim_set_current_win, self:top().win_id)
+    pcall(api.nvim_set_current_win, self:top().winid)
   else
-    pcall(api.nvim_set_current_win, self.original_win_id)
+    pcall(api.nvim_set_current_win, self.original_winid)
 
     -- Call the on_stack_empty hook if defined
     local config = require("overlook.config").get()
@@ -86,8 +86,8 @@ function Stack:clear(force_close)
   -- Iterate over the copy, closing windows
   while not self:empty() do
     local top = self:top()
-    if top and api.nvim_win_is_valid(top.win_id) then
-      api.nvim_win_close(top.win_id, force_close or false)
+    if top and api.nvim_win_is_valid(top.winid) then
+      api.nvim_win_close(top.winid, force_close or false)
     end
     self:pop()
   end
@@ -96,17 +96,17 @@ function Stack:clear(force_close)
   vim.opt.eventignore:remove("WinClosed")
 
   -- Restore focus to the original window
-  pcall(api.nvim_set_current_win, self.original_win_id)
+  pcall(api.nvim_set_current_win, self.original_winid)
 
   -- Clean up the autocommand group to prevent leaks
   pcall(api.nvim_clear_autocmds, { group = self.augroup_id })
 end
 
 ---Remove a popup's info and index in the stack by window ID.
----@param win_id integer
-function Stack:remove_by_winid(win_id)
+---@param winid integer
+function Stack:remove_by_winid(winid)
   for i = self:size(), 1, -1 do
-    if self.items[i].win_id == win_id then
+    if self.items[i].winid == winid then
       table.remove(self.items, i)
       return
     end
@@ -117,7 +117,7 @@ end
 function Stack:remove_invalid_windows()
   while not self:empty() do
     local top = self:top()
-    if top and api.nvim_win_is_valid(top.win_id) then
+    if top and api.nvim_win_is_valid(top.winid) then
       return
     end
 
@@ -131,42 +131,43 @@ end
 local M = {}
 
 ---@type table<integer, OverlookStack>
-M.stack_instances = {} -- Key: original_win_id, Value: Stack object
+M.stack_instances = {} -- Key: original_winid, Value: Stack object
 
 ---Creates a new Stack instance.
----@param original_win_id integer
+---@param original_winid integer
 ---@return OverlookStack
-function M.new(original_win_id)
+function M.new(original_winid)
   local this = setmetatable({}, Stack)
 
-  this.original_win_id = original_win_id
+  this.original_winid = original_winid
+  -- TODO: this group is no longer needed
   this.augroup_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
   this.items = {}
 
   return this
 end
 
----Determines the original_win_id for the current context.
+---Determines the original_winid for the current context.
 ---@return integer
-function M.get_current_original_win_id()
+function M.get_current_original_winid()
   if vim.w.is_overlook_popup then
-    return vim.w.overlook_popup.original_win_id
+    return vim.w.overlook_popup.original_winid
   end
   return api.nvim_get_current_win()
 end
 
 -- assuming this is original window, not popup
 -- TODO: should come up with a name for original window, host window?
-function M.win_get_stack(win_id)
-  if not M.stack_instances[win_id] then
-    M.stack_instances[win_id] = M.new(win_id)
+function M.win_get_stack(winid)
+  if not M.stack_instances[winid] then
+    M.stack_instances[winid] = M.new(winid)
   end
-  return M.stack_instances[win_id]
+  return M.stack_instances[winid]
 end
 
 function M.get_current_stack()
-  local win_id = M.get_current_original_win_id()
-  return M.win_get_stack(win_id)
+  local winid = M.get_current_original_winid()
+  return M.win_get_stack(winid)
 end
 
 ---@param popup_info OverlookPopup

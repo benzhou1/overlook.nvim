@@ -66,7 +66,7 @@ function M.update_keymap()
   end
 
   local top_item = Stack.top() -- Use local require
-  local top_win_id = top_item and top_item.win_id or nil
+  local top_win_id = top_item and top_item.winid or nil
   local cfg = Config.options -- Use local require
   local close_key = (cfg and cfg.ui and cfg.ui.keys and cfg.ui.keys.close) or "q"
 
@@ -144,7 +144,7 @@ function M.update_title()
   end
 
   local top_item = Stack.top() -- Use local require
-  local top_win_id = top_item and top_item.win_id or nil
+  local top_win_id = top_item and top_item.winid or nil
 
   -- Only act if the current window IS the top overlook popup
   if top_win_id and current_win == top_win_id then

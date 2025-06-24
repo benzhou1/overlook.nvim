@@ -5,12 +5,12 @@ local State = require("overlook.state")
 
 ---@class OverlookPopup
 ---@field opts OverlookPopupOptions
----@field win_id integer Neovim window ID for the popup
+---@field winid integer Neovim window ID for the popup
 ---@field win_config vim.api.keyset.win_config window configuration table for `nvim_open_win()`
 ---@field width integer Width of the popup window
 ---@field height integer Height of the popup window
 ---@field is_first_popup boolean
----@field orginal_win_id integer
+---@field original_winid integer
 local Popup = {}
 Popup.__index = Popup
 
@@ -66,15 +66,15 @@ end
 --- Calculates the window configuration for the first popup.
 ---@return vim.api.keyset.win_config win_config Neovim window configuration table, or nil if an error occurs
 function Popup:config_for_first_popup()
-  local current_win_id = api.nvim_get_current_win()
-  local cursor_buf_pos = api.nvim_win_get_cursor(current_win_id)
-  local cursor_abs_screen_pos = vim.fn.screenpos(current_win_id, cursor_buf_pos[1], cursor_buf_pos[2] + 1)
-  local win_pos = api.nvim_win_get_position(current_win_id)
+  local current_winid = api.nvim_get_current_win()
+  local cursor_buf_pos = api.nvim_win_get_cursor(current_winid)
+  local cursor_abs_screen_pos = vim.fn.screenpos(current_winid, cursor_buf_pos[1], cursor_buf_pos[2] + 1)
+  local win_pos = api.nvim_win_get_position(current_winid)
 
   -- distance from the top of the window to the cursor (including winbar)
   local winbar_enabled = vim.o.winbar ~= ""
-  local max_window_height = api.nvim_win_get_height(current_win_id) - (winbar_enabled and 1 or 0)
-  local max_window_width = api.nvim_win_get_width(current_win_id)
+  local max_window_height = api.nvim_win_get_height(current_winid) - (winbar_enabled and 1 or 0)
+  local max_window_width = api.nvim_win_get_width(current_winid)
 
   local screen_space_above = cursor_abs_screen_pos.row - win_pos[1] - 1 - (winbar_enabled and 1 or 0)
   local screen_space_below = max_window_height - screen_space_above - 1
@@ -100,7 +100,7 @@ function Popup:config_for_first_popup()
     width = width,
     height = height,
 
-    win = current_win_id,
+    win = current_winid,
     zindex = Config.ui.z_index_base,
     col = screen_space_left + Config.ui.col_offset,
   }
@@ -111,7 +111,7 @@ function Popup:config_for_first_popup()
     win_config.row = screen_space_above + 1 + Config.ui.row_offset
   end
 
-  self.orginal_win_id = current_win_id
+  self.original_winid = current_winid
 
   return win_config
 end
@@ -120,12 +120,12 @@ end
 ---@param prev OverlookPopup Previous popup item from the stack
 ---@return table win_config Neovim window configuration table, or nil if an error occurs
 function Popup:config_for_stacked_popup(prev)
-  self.orginal_win_id = prev.orginal_win_id
+  self.original_winid = prev.original_winid
   return {
     relative = "win",
     style = "minimal",
     focusable = true,
-    win = prev.win_id,
+    win = prev.winid,
     zindex = Config.ui.z_index_base + Stack.size(),
 
     width = math.max(Config.ui.min_width, prev.width - Config.ui.width_decrement),
@@ -175,21 +175,21 @@ end
 --- Opens the Neovim window and registers it with the state manager.
 ---@return boolean success True if window was opened and registered, false otherwise.
 function Popup:open_and_register_window()
-  self.win_id = api.nvim_open_win(self.opts.target_bufnr, true, self.win_config)
+  self.winid = api.nvim_open_win(self.opts.target_bufnr, true, self.win_config)
 
-  if self.win_id == 0 then
+  if self.winid == 0 then
     vim.notify("Overlook: Failed to open popup window.", vim.log.levels.ERROR)
     return false
   end
 
   vim.w.is_overlook_popup = true
   vim.w.overlook_popup = {
-    original_win_id = self.orginal_win_id,
+    original_winid = self.original_winid,
   }
 
-  State.register_overlook_popup(self.win_id, self.opts.target_bufnr)
+  State.register_overlook_popup(self.winid, self.opts.target_bufnr)
 
-  local actual_win_config = vim.api.nvim_win_get_config(self.win_id)
+  local actual_win_config = vim.api.nvim_win_get_config(self.winid)
   self.width = actual_win_config.width
   self.height = actual_win_config.height
 
@@ -198,8 +198,8 @@ end
 
 --- Configures cursor position and view within the newly opened window.
 function Popup:configure_opened_window_details()
-  api.nvim_win_set_cursor(self.win_id, { self.opts.lnum, math.max(0, self.opts.col - 1) })
-  vim.api.nvim_win_call(self.win_id, function()
+  api.nvim_win_set_cursor(self.winid, { self.opts.lnum, math.max(0, self.opts.col - 1) })
+  vim.api.nvim_win_call(self.winid, function()
     vim.cmd("normal! zz")
   end)
 end
