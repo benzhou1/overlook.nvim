@@ -4,6 +4,7 @@ local api = vim.api
 ---@field original_winid integer The root original window ID for this stack.
 ---@field augroup_id integer The ID of the autocommand group for closing popups.
 ---@field items OverlookPopup[] Array of popup items.
+---@field trash OverlookPopup[] Array of popped items.
 local Stack = {}
 Stack.__index = Stack
 
@@ -32,13 +33,34 @@ end
 ---@param popup_info OverlookPopup
 function Stack:push(popup_info)
   table.insert(self.items, popup_info)
+  self.trash = {}
 end
 
 ---Pushes popup info onto the stack and stores original wid if needed.
 function Stack:pop()
   if not self:empty() then
-    table.remove(self.items, self:size())
+    local top = table.remove(self.items, self:size())
+    table.insert(self.trash, top)
+    return top
   end
+end
+
+---Restores the last popped item back onto the stack.
+function Stack:restore()
+  if #self.trash == 0 then
+    vim.notify("Overlook: No popup to restore", vim.log.levels.WARN)
+    return
+  end
+
+  ---@type OverlookPopup
+  local closed_popup = table.remove(self.trash, #self.trash)
+  local restored_popup = require("overlook.popup").new(closed_popup.opts)
+  if not restored_popup then
+    vim.notify("Overlook: Failed to restore popup", vim.log.levels.ERROR)
+    return
+  end
+
+  table.insert(self.items, restored_popup)
 end
 
 ---Handles cleanup and focus when self:top() is closed.
@@ -143,6 +165,7 @@ function M.new(original_winid)
   -- TODO: this group is no longer needed
   this.augroup_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
   this.items = {}
+  this.trash = {}
 
   return this
 end
