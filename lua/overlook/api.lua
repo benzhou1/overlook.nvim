@@ -28,6 +28,11 @@ M.peek.mark = function()
   end)
 end
 
+M.restore_all_popups = function()
+  local stack = require("overlook.stack").get_current_stack()
+  stack:restore_all()
+end
+
 M.restore_popup = function()
   local stack = require("overlook.stack").get_current_stack()
   stack:restore()

@@ -63,6 +63,13 @@ function Stack:restore()
   table.insert(self.items, restored_popup)
 end
 
+---Restores the all popped items back onto the stack.
+function Stack:restore_all()
+  while #self.trash > 0 do
+    self:restore()
+  end
+end
+
 ---Handles cleanup and focus when self:top() is closed.
 ---Triggered by WinClosed autocommand.
 function Stack:on_close()
