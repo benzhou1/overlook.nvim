@@ -52,6 +52,9 @@ local function promote_popup_to_window(open_command)
 
   local buf_id_to_open = vim.api.nvim_get_current_buf()
 
+  ---@diagnostic disable-next-line: unused-local
+  local _bufnum, lnum, col, _off = unpack(vim.fn.getpos("."))
+
   -- Close all overlook popups. This also clears the stack.
   Stack.clear()
 
@@ -75,6 +78,13 @@ local function promote_popup_to_window(open_command)
     )
     return -- Ensure we don't proceed if window creation failed
   end
+
+  -- set cursor position in the new window
+  -- TODO: extract this to a util function
+  vim.api.nvim_win_set_cursor(0, { lnum, math.max(0, col - 1) })
+  vim.api.nvim_win_call(0, function()
+    vim.cmd("normal! zz")
+  end)
 end
 
 --- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).

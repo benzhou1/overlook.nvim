@@ -215,13 +215,15 @@ function M.handle_style_for_buffer_in_window()
     return
   end
 
+  if vim.w.is_overlook_popup then
+    -- switching buffer within an Overlook popup, e.g. go to definition
+    M.register_overlook_popup(current_winid, current_bufnr)
+    return -- Don't restore options on Overlook's own popups
+  end
+
   -- Check if this buffer was touched by Overlook
   if not M.touched_by_overlook[current_bufnr] then
     return
-  end
-
-  if vim.w.is_overlook_popup then
-    return -- Don't restore options on Overlook's own popups
   end
 
   -- If we're here, a "touched" buffer is in a non-Overlook window. Restore its style.
