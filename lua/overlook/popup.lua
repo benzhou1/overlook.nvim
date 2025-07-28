@@ -10,7 +10,7 @@ local State = require("overlook.state")
 ---@field width integer Width of the popup window
 ---@field height integer Height of the popup window
 ---@field is_first_popup boolean
----@field original_winid integer
+---@field root_winid integer
 local Popup = {}
 Popup.__index = Popup
 
@@ -111,7 +111,7 @@ function Popup:config_for_first_popup()
     win_config.row = screen_space_above + 1 + Config.ui.row_offset
   end
 
-  self.original_winid = current_winid
+  self.root_winid = current_winid
 
   return win_config
 end
@@ -120,7 +120,7 @@ end
 ---@param prev OverlookPopup Previous popup item from the stack
 ---@return table win_config Neovim window configuration table, or nil if an error occurs
 function Popup:config_for_stacked_popup(prev)
-  self.original_winid = prev.original_winid
+  self.root_winid = prev.root_winid
   return {
     relative = "win",
     style = "minimal",
@@ -184,7 +184,7 @@ function Popup:open_and_register_window()
 
   vim.w.is_overlook_popup = true
   vim.w.overlook_popup = {
-    original_winid = self.original_winid,
+    root_winid = self.root_winid,
   }
 
   State.register_overlook_popup(self.winid, self.opts.target_bufnr)

@@ -1,7 +1,7 @@
 local api = vim.api
 
 ---@class OverlookStack
----@field original_winid integer The root original window ID for this stack.
+---@field root_winid integer The root original window ID for this stack.
 ---@field augroup_id integer The ID of the autocommand group for closing popups.
 ---@field items OverlookPopup[] Array of popup items.
 ---@field trash OverlookPopup[] Array of popped items.
@@ -84,7 +84,7 @@ function Stack:on_close()
   if not self:empty() then
     pcall(api.nvim_set_current_win, self:top().winid)
   else
-    pcall(api.nvim_set_current_win, self.original_winid)
+    pcall(api.nvim_set_current_win, self.root_winid)
 
     -- Call the on_stack_empty hook if defined
     local config = require("overlook.config").get()
@@ -125,7 +125,7 @@ function Stack:clear(force_close)
   vim.opt.eventignore:remove("WinClosed")
 
   -- Restore focus to the original window
-  pcall(api.nvim_set_current_win, self.original_winid)
+  pcall(api.nvim_set_current_win, self.root_winid)
 
   -- Clean up the autocommand group to prevent leaks
   pcall(api.nvim_clear_autocmds, { group = self.augroup_id })
@@ -160,15 +160,15 @@ end
 local M = {}
 
 ---@type table<integer, OverlookStack>
-M.stack_instances = {} -- Key: original_winid, Value: Stack object
+M.stack_instances = {} -- Key: root_winid, Value: Stack object
 
 ---Creates a new Stack instance.
----@param original_winid integer
+---@param root_winid integer
 ---@return OverlookStack
-function M.new(original_winid)
+function M.new(root_winid)
   local this = setmetatable({}, Stack)
 
-  this.original_winid = original_winid
+  this.root_winid = root_winid
   -- TODO: this group is no longer needed
   this.augroup_id = api.nvim_create_augroup("OverlookPopupClose", { clear = true })
   this.items = {}
@@ -177,11 +177,11 @@ function M.new(original_winid)
   return this
 end
 
----Determines the original_winid for the current context.
+---Determines the root_winid for the current context.
 ---@return integer
-function M.get_current_original_winid()
+function M.get_current_root_winid()
   if vim.w.is_overlook_popup then
-    return vim.w.overlook_popup.original_winid
+    return vim.w.overlook_popup.root_winid
   end
   return api.nvim_get_current_win()
 end
@@ -196,7 +196,7 @@ function M.win_get_stack(winid)
 end
 
 function M.get_current_stack()
-  local winid = M.get_current_original_winid()
+  local winid = M.get_current_root_winid()
   return M.win_get_stack(winid)
 end
 

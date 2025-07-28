@@ -9,7 +9,7 @@ function M.create_popup(opts)
     return nil
   end
 
-  local stack = require("overlook.stack").win_get_stack(popup.original_winid)
+  local stack = require("overlook.stack").win_get_stack(popup.root_winid)
   stack:push(popup)
 
   return popup

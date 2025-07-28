@@ -10,7 +10,7 @@ local TEST_CONSTANTS = {
   DEFAULT_WINID = 1000,
   DEFAULT_BUF_ID = 100,
   POPUP_WINIDS = { 1, 2, 3, 4, 5 },
-  ORIGINAL_WINIDS = { 100, 200, 300, 500, 600, 999 },
+  ROOT_WINIDS = { 100, 200, 300, 500, 600, 999 },
 }
 
 -- Test data factories
@@ -26,10 +26,10 @@ local function create_test_item(winid, buf_id, z_index)
   }
 end
 
-local function create_popup_context(original_winid)
+local function create_popup_context(root_winid)
   return {
     is_overlook_popup = true,
-    overlook_popup = { original_winid = original_winid },
+    overlook_popup = { root_winid = root_winid },
   }
 end
 
@@ -94,58 +94,58 @@ describe("overlook.stack", function()
 
   describe("Stack instance management", function()
     it("should create separate stacks for different original windows", function()
-      local winid_1 = TEST_CONSTANTS.ORIGINAL_WINIDS[1]
-      local winid_2 = TEST_CONSTANTS.ORIGINAL_WINIDS[2]
+      local winid_1 = TEST_CONSTANTS.ROOT_WINIDS[1]
+      local winid_2 = TEST_CONSTANTS.ROOT_WINIDS[2]
 
       local stack1 = stack.win_get_stack(winid_1)
       local stack2 = stack.win_get_stack(winid_2)
 
       assert.are_not.equal(stack1, stack2)
-      assert.are.equal(winid_1, stack1.original_winid)
-      assert.are.equal(winid_2, stack2.original_winid)
+      assert.are.equal(winid_1, stack1.root_winid)
+      assert.are.equal(winid_2, stack2.root_winid)
       assert.are.equal(TEST_CONSTANTS.AUGROUP_ID, stack1.augroup_id)
       assert.are.equal(TEST_CONSTANTS.AUGROUP_ID, stack2.augroup_id)
     end)
 
     it("should return the same stack instance for the same original window", function()
-      local winid = TEST_CONSTANTS.ORIGINAL_WINIDS[1]
+      local winid = TEST_CONSTANTS.ROOT_WINIDS[1]
 
       local stack1 = stack.win_get_stack(winid)
       local stack2 = stack.win_get_stack(winid)
 
       assert.are.equal(stack1, stack2)
-      assert.are.equal(winid, stack1.original_winid)
+      assert.are.equal(winid, stack1.root_winid)
     end)
 
-    it("should determine correct original_winid from regular window", function()
+    it("should determine correct root_winid from regular window", function()
       vim.w = {} -- No popup context
-      local expected_winid = TEST_CONSTANTS.ORIGINAL_WINIDS[3]
+      local expected_winid = TEST_CONSTANTS.ROOT_WINIDS[3]
       api_mock.nvim_get_current_win.returns(expected_winid)
 
-      local winid = stack.get_current_original_winid()
+      local winid = stack.get_current_root_winid()
 
       assert.are.equal(expected_winid, winid)
       assert.stub(api_mock.nvim_get_current_win).was_called()
     end)
 
-    it("should determine correct original_winid from popup context", function()
-      local original_winid = TEST_CONSTANTS.ORIGINAL_WINIDS[4]
-      vim.w = create_popup_context(original_winid)
+    it("should determine correct root_winid from popup context", function()
+      local root_winid = TEST_CONSTANTS.ROOT_WINIDS[4]
+      vim.w = create_popup_context(root_winid)
 
-      local winid = stack.get_current_original_winid()
+      local winid = stack.get_current_root_winid()
 
-      assert.are.equal(original_winid, winid)
+      assert.are.equal(root_winid, winid)
       -- Should not call nvim_get_current_win when in popup context
       assert.stub(api_mock.nvim_get_current_win).was_not_called()
     end)
 
     it("should create new stack instance with proper initialization", function()
-      local winid = TEST_CONSTANTS.ORIGINAL_WINIDS[5]
+      local winid = TEST_CONSTANTS.ROOT_WINIDS[5]
 
       local new_stack = stack.win_get_stack(winid)
 
       assert.is_not_nil(new_stack)
-      assert.are.equal(winid, new_stack.original_winid)
+      assert.are.equal(winid, new_stack.root_winid)
       assert.are.equal(TEST_CONSTANTS.AUGROUP_ID, new_stack.augroup_id)
       assert.are.same({}, new_stack.items)
       assert.are.equal(0, new_stack:size())
@@ -167,7 +167,7 @@ describe("overlook.stack", function()
       assert.are.equal(0, test_stack:size())
       assert.is_true(test_stack:empty())
       assert.is_nil(test_stack:top())
-      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, test_stack.original_winid)
+      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, test_stack.root_winid)
       assert.are.equal(TEST_CONSTANTS.AUGROUP_ID, test_stack.augroup_id)
     end)
 
@@ -380,22 +380,22 @@ describe("overlook.stack", function()
     it("should work with different window contexts", function()
       -- Test with regular window context
       vim.w = {}
-      local regular_winid = TEST_CONSTANTS.ORIGINAL_WINIDS[4]
+      local regular_winid = TEST_CONSTANTS.ROOT_WINIDS[4]
       api_mock.nvim_get_current_win.returns(regular_winid)
 
       stack.push(create_test_item(TEST_CONSTANTS.POPUP_WINIDS[1], 10))
       assert.are.equal(1, stack.size())
 
       -- Test with popup window context
-      local popup_original_winid = TEST_CONSTANTS.ORIGINAL_WINIDS[5]
-      vim.w = create_popup_context(popup_original_winid)
+      local popup_root_winid = TEST_CONSTANTS.ROOT_WINIDS[5]
+      vim.w = create_popup_context(popup_root_winid)
 
       stack.push(create_test_item(TEST_CONSTANTS.POPUP_WINIDS[2], 20))
       assert.are.equal(1, stack.size()) -- Different stack
 
       -- Verify separate stacks
       local regular_stack = stack.win_get_stack(regular_winid)
-      local popup_stack = stack.win_get_stack(popup_original_winid)
+      local popup_stack = stack.win_get_stack(popup_root_winid)
       assert.are.equal(1, regular_stack:size())
       assert.are.equal(1, popup_stack:size())
       assert.are_not.equal(regular_stack, popup_stack)

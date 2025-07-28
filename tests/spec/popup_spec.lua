@@ -143,7 +143,7 @@ describe("Popup:config_for_first_popup", function()
         title = "Overlook default title",
         title_pos = "center",
       }, win_config)
-      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.original_winid)
+      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.root_winid)
     end)
 
     it("should calculate config correctly with winbar enabled", function()
@@ -153,7 +153,7 @@ describe("Popup:config_for_first_popup", function()
       assert.is_not_nil(popup_instance)
       local win_config = popup_instance.win_config
       assert.are.equal(6, win_config.row) -- Different row when winbar is enabled
-      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.original_winid)
+      assert.are.equal(TEST_CONSTANTS.DEFAULT_WINID, popup_instance.root_winid)
     end)
   end)
 
@@ -472,7 +472,7 @@ describe("Popup stack integration", function()
       width = 50,
       height = 10,
       buf_id = 2,
-      original_winid = TEST_CONSTANTS.DEFAULT_WINID,
+      root_winid = TEST_CONSTANTS.DEFAULT_WINID,
     }
 
     Stack.empty = stub().returns(false)
