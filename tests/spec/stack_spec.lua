@@ -93,7 +93,7 @@ describe("overlook.stack", function()
   end)
 
   describe("Stack instance management", function()
-    it("should create separate stacks for different original windows", function()
+    it("should create separate stacks for different root windows", function()
       local winid_1 = TEST_CONSTANTS.ROOT_WINIDS[1]
       local winid_2 = TEST_CONSTANTS.ROOT_WINIDS[2]
 
@@ -107,7 +107,7 @@ describe("overlook.stack", function()
       assert.are.equal(TEST_CONSTANTS.AUGROUP_ID, stack2.augroup_id)
     end)
 
-    it("should return the same stack instance for the same original window", function()
+    it("should return the same stack instance for the same root window", function()
       local winid = TEST_CONSTANTS.ROOT_WINIDS[1]
 
       local stack1 = stack.win_get_stack(winid)

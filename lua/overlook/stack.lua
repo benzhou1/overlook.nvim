@@ -1,7 +1,7 @@
 local api = vim.api
 
 ---@class OverlookStack
----@field root_winid integer The root original window ID for this stack.
+---@field root_winid integer The root window ID for this stack.
 ---@field augroup_id integer The ID of the autocommand group for closing popups.
 ---@field items OverlookPopup[] Array of popup items.
 ---@field trash OverlookPopup[] Array of popped items.
@@ -124,7 +124,7 @@ function Stack:clear(force_close)
   -- Re-enable WinClosed
   vim.opt.eventignore:remove("WinClosed")
 
-  -- Restore focus to the original window
+  -- Restore focus to the root window
   pcall(api.nvim_set_current_win, self.root_winid)
 
   -- Clean up the autocommand group to prevent leaks
@@ -186,8 +186,7 @@ function M.get_current_root_winid()
   return api.nvim_get_current_win()
 end
 
--- assuming this is original window, not popup
--- TODO: should come up with a name for original window, host window?
+-- assuming this is root window, not popup
 function M.win_get_stack(winid)
   if not M.stack_instances[winid] then
     M.stack_instances[winid] = M.new(winid)

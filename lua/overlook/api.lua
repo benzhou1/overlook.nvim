@@ -94,7 +94,7 @@ M.promote_top_to_window = function(open_command)
   promote_popup_to_window(cmd)
 end
 
---- Promotes the top Overlook popup to the original window.
+--- Promotes the top Overlook popup to the root window.
 M.promote_top_to_original_window = function()
   promote_popup_to_window("buffer")
 end
