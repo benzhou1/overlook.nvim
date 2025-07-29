@@ -1,6 +1,6 @@
 # overlook.nvim
 
-A Neovim plugin that provides floating popup windows for peeking at code locations without losing your current context. Inspired by [lspsaga.nvim](https://github.com/nvimdev/lspsaga.nvim)'s peek_definition feature, `overlook.nvim` takes the concept further by building a complete popup solution around it.
+Floating popups for peeking at code locations without overlooking where you are.
 
 ## Demo
 
@@ -17,7 +17,7 @@ A Neovim plugin that provides floating popup windows for peeking at code locatio
 
 ## Why overlook.nvim?
 
-I loved lspsaga's peek_definition feature so much that I decided to extract and expand upon it as a dedicated plugin. The core philosophy is that **popups should behave exactly like normal buffers** - you can navigate, edit, save, and do anything you would in a regular window. This makes it perfect for:
+The core philosophy is that **popups should behave exactly like normal buffers** - you can navigate, edit, save, and do anything you would in a regular window. This makes it perfect for:
 
 - Making quick fixes without losing your context
 - Exploring codebases by following definition to create nested popups
@@ -112,4 +112,4 @@ Popups in overlook.nvim are **fully functional buffers**, you can:
 
 ## Acknowledgments
 
-Special thanks to the [lspsaga.nvim](https://github.com/nvimdev/lspsaga.nvim) project for the original peek_definition implementation that inspired this plugin.
+Special thanks to the [lspsaga.nvim](https://github.com/nvimdev/lspsaga.nvim) project for the original `peek_definition` implementation that inspired this plugin.
