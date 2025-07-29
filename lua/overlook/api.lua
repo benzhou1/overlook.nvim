@@ -4,17 +4,15 @@ local Ui = require("overlook.ui")
 
 local M = {}
 
-M.peek = {}
-
-M.peek.definition = function()
+M.peek_definition = function()
   Peek.definition()
 end
 
-M.peek.cursor = function()
+M.peek_cursor = function()
   Peek.cursor()
 end
 
-M.peek.mark = function()
+M.peek_mark = function()
   Peek.marks()
   vim.ui.input({ prompt = "Overlook Mark:" }, function(input)
     if input == nil or input == "" then
