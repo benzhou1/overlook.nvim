@@ -249,4 +249,3 @@ describe("overlook.adapter.definition", function()
   -- Note: Test for buffer loading logic is omitted for brevity,
   -- but would involve mocking vim.cmd and api.nvim_buf_is_valid more elaborately.
 end)
-
