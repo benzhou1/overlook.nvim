@@ -1,6 +1,6 @@
 # overlook.nvim
 
-Floating popups for peeking at code locations without overlooking where you are.
+Stackable floating popups for peeking at code locations without overlooking where you are.
 
 ## Demo
 
@@ -17,10 +17,12 @@ Floating popups for peeking at code locations without overlooking where you are.
 
 ## Why overlook.nvim?
 
-The core philosophy is that **popups should behave exactly like normal buffers** - you can navigate, edit, save, and do anything you would in a regular window. This makes it perfect for:
+The core philosophy is simple: **popups are buffers**. Edit them, save them, navigate them - they behave exactly like any other window.
 
-- Making quick fixes without losing your context
-- Exploring codebases by following definition to create nested popups
+- Make quick fixes without losing your place
+- Switch buffers inside popups - `:bnext`, `<C-^>`, fzf, all work normally
+- Create nested popups to trace through definition chains
+- Each stack is window-local, so you can have multiple exploration paths
 - Visually backtrace-able modification history
 
 ## Installation
