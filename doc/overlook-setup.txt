@@ -7,7 +7,8 @@ Initialize and configure overlook.nvim with user-provided options.
 Should be called from the user's Neovim configuration, typically via
 `require("overlook").setup(opts)`.
 
-see |overlook-config.defaults| for details.
+See also ~
+|overlook-config.defaults|
 
 Parameters ~
 {opts} `(optional)` `(table)` User configuration options (optional).

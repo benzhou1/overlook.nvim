@@ -65,7 +65,7 @@ end
 --- Should be called from the user's Neovim configuration, typically via
 --- `require("overlook").setup(opts)`.
 ---
---- see |overlook-config.defaults| for details.
+---@seealso |overlook-config.defaults|
 ---
 ---@param opts? table User configuration options (optional).
 ---
