@@ -50,9 +50,9 @@ local M = {}
 ---| "shadow"     Border with shadow effect
 ---| string[]     Custom border array as defined by nvim_open_win
 
---- *OverlookUiOptions*
+--- *OverlookOptions.UI*
 ---
----@class OverlookUiOptions
+---@class OverlookOptions.UI
 ---
 ---@field border OverlookBorderStyle Border style for popups.
 ---@field z_index_base integer Base z-index for the first popup.
@@ -78,7 +78,7 @@ local M = {}
 ---
 ---@class OverlookOptions
 ---
----@field ui OverlookUiOptions UI settings for the popup windows.
+---@field ui OverlookOptions.UI UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
 

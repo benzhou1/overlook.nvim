@@ -51,10 +51,10 @@ Type Definitions
 string[]     Custom border array as defined by nvim_open_win
 
 ------------------------------------------------------------------------------
-*OverlookUiOptions*
+*OverlookOptions.UI*
 
 Class ~
-{OverlookUiOptions}
+{OverlookOptions.UI}
 
 Fields ~
 {border}  `(Border)` style for popups.
@@ -86,7 +86,7 @@ Class ~
 {OverlookOptions}
 
 Fields ~
-{ui} `(OverlookUiOptions)` UI settings for the popup windows.
+{ui} `(OverlookOptions.UI)` UI settings for the popup windows.
 {adapters} `(OverlookAdapterOptions)` Adapter-specific configurations.
 {on_stack_empty} `(optional)` `(fun())` Optional function called when the last Overlook popup closes.
 
@@ -168,7 +168,7 @@ External modules can also access configuration directly via
 `require('overlook.config').options` if they ensure proper setup timing.
 
 Return ~
-`(OverlookOptions)` options The active configuration table
+`(OverlookOptions)` The active configuration table
 
 Usage ~
 >lua

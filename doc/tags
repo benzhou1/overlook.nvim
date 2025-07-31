@@ -1,7 +1,7 @@
 OverlookAdapterOptions	overlook-config.txt	/*OverlookAdapterOptions*
 OverlookBorderStyle	overlook-config.txt	/*OverlookBorderStyle*
 OverlookOptions	overlook-config.txt	/*OverlookOptions*
-OverlookUiOptions	overlook-config.txt	/*OverlookUiOptions*
+OverlookOptions.UI	overlook-config.txt	/*OverlookOptions.UI*
 overlook-api	overlook-api.txt	/*overlook-api*
 overlook-api.close_all	overlook-api.txt	/*overlook-api.close_all*
 overlook-api.open_in_original_window	overlook-api.txt	/*overlook-api.open_in_original_window*
