@@ -1,20 +1,64 @@
+--- *overlook.config* Configuration management for overlook.nvim
+--- *OverlookConfig*
+---
+--- Configuration module for overlook.nvim, providing default settings and user
+--- customization capabilities for popup behavior, styling, and adapter configurations.
+---
+--- This module handles the setup and merging of user-provided options with
+--- sensible defaults, ensuring the plugin works out of the box while allowing
+--- extensive customization.
+---
+--- # Features ~
+---
+--- - Type-safe configuration with comprehensive field definitions
+--- - Deep merging of user options with sensible defaults
+--- - Flexible UI customization (borders, positioning, sizing)
+--- - Adapter-specific configuration support
+--- - Runtime configuration access for other modules
+---
+--- # Setup ~
+---
+--- This module is typically used indirectly through the main overlook setup:
+--- >lua
+---   require('overlook').setup({
+---     ui = {
+---       border = "single",
+---       row_offset = 2,
+---       size_ratio = 0.8
+---     }
+---   })
+--- <
+---
+--- Direct access to configuration:
+--- >lua
+---   local config = require('overlook.config')
+---   local current_opts = config.get()
+--- <
+---@tag overlook-config
+
 local M = {}
 
----@alias OverlookBorderStyle
----| "none"
----| "single"
----| "bold"
----| "double"
----| "rounded"
----| "solid"
----| "shadow"
----| string[]
+---@text Type Definitions
 
+--- OverlookBorderStyle
+---
+---@alias OverlookBorderStyle
+---| "none"       No border
+---| "single"     Single line border using box-drawing characters
+---| "bold"       Bold border using heavy box-drawing characters
+---| "double"     Double line border using double box-drawing characters
+---| "rounded"    Rounded corners border (default)
+---| "solid"      Solid border using block characters
+---| "shadow"     Border with shadow effect
+---| string[]     Custom border array as defined by nvim_open_win
+
+--- OverlookUiOptions
+---
 ---@class OverlookUiOptions
 ---@field border OverlookBorderStyle Border style for popups.
 ---@field z_index_base integer Base z-index for the first popup.
----@field row_offset integer Initial row offset relative to the cursor for the *first* popup.
----@field col_offset integer Initial column offset relative to the cursor for the *first* popup.
+---@field row_offset integer Initial row offset relative to the cursor for the first popup.
+---@field col_offset integer Initial column offset relative to the cursor for the first popup.
 ---@field stack_row_offset integer Vertical offset for subsequent stacked popups.
 ---@field stack_col_offset integer Column offset for subsequent stacked popups.
 ---@field width_decrement integer Amount by which the width decreases for each subsequent popup.
@@ -24,16 +68,28 @@ local M = {}
 ---@field size_ratio number Default size ratio (0.0 to 1.0) used to calculate initial size.
 ---@field keys? table<string, string> Keymaps specific to the popup UI.
 
+--- OverlookAdapterOptions
+---
 ---@class OverlookAdapterOptions
 ---@field marks? table Configuration for the 'marks' adapter.
 -- ---@field lsp? table Placeholder for future LSP adapter config
 
+--- OverlookOptions
+---
 ---@class OverlookOptions
 ---@field ui OverlookUiOptions UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
 
----Default configuration options for overlook.nvim
+---@text Default Configuration
+
+--- Default configuration options for overlook.nvim.
+---
+--- These options control the appearance, behavior, and positioning of floating
+--- popups, as well as adapter-specific settings. Users can override any of these
+--- values by passing a configuration table to |require("overlook").setup()|.
+---
+---@eval return require("mini.doc").afterlines_to_code(MiniDoc.current.eval_section)
 ---@type OverlookOptions
 M.options = {
   -- UI settings for the popup windows
@@ -45,9 +101,9 @@ M.options = {
     -- Higher values appear visually on top.
     z_index_base = 30,
 
-    -- Initial row offset relative to the cursor for the *first* popup.
+    -- Initial row offset relative to the cursor for the first popup.
     row_offset = 0,
-    -- Initial column offset relative to the cursor for the *first* popup.
+    -- Initial column offset relative to the cursor for the first popup.
     col_offset = 0,
 
     -- Vertical offset for subsequent stacked popups relative to the previous popup's top border.
@@ -84,10 +140,23 @@ M.options = {
   -- Optional hook called when the last Overlook popup closes
   on_stack_empty = nil,
 }
+--minidoc_afterlines_end
 
--- Merges user-provided options with the defaults.
--- Called from require('overlook').setup(opts) in user's config.
----@param user_opts? table User configuration options passed from their setup call.
+---@text Configuration Management Functions
+
+--- Initialize and configure overlook.nvim with user-provided options.
+---
+--- Merges user-provided configuration with default values using deep merge
+--- semantics. This allows users to override specific configuration values
+--- while preserving defaults for unspecified options.
+---
+--- Should be called from the user's Neovim configuration, typically via
+--- `require("overlook").setup(opts)`.
+---
+---@param user_opts? table User configuration options. Can contain any subset of OverlookOptions fields.
+---@usage >lua
+---   require("overlook").setup({ ui = { border = "single", row_offset = 2 } })
+--- <
 function M.setup(user_opts)
   if user_opts then
     -- Use deep_extend to merge nested tables like 'ui' and 'adapters'.
@@ -98,10 +167,16 @@ function M.setup(user_opts)
   -- For example, ensure min_width is less than default_width.
 end
 
--- Returns the currently active configuration table.
--- Primarily for internal use by other plugin modules via require('overlook.config').get()
--- or directly via require('overlook.config').options if setup timing is guaranteed.
----@return OverlookOptions
+--- Get the current active configuration.
+---
+--- Returns the currently active configuration table after any user modifications
+--- have been applied through M.setup(). This is primarily used internally by
+--- other overlook modules to access configuration values.
+---
+--- External modules can also access configuration directly via
+--- `require('overlook.config').options` if they ensure proper setup timing.
+---
+---@return OverlookOptions The active configuration table
 function M.get()
   return M.options
 end
