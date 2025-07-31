@@ -30,8 +30,7 @@
 ---
 --- Direct access to configuration:
 --- >lua
----   local config = require('overlook.config')
----   local current_opts = config.get()
+---   local opts = require('overlook.config').get()
 --- <
 ---@tag overlook-config
 
@@ -54,6 +53,7 @@ local M = {}
 --- *OverlookUiOptions*
 ---
 ---@class OverlookUiOptions
+---
 ---@field border OverlookBorderStyle Border style for popups.
 ---@field z_index_base integer Base z-index for the first popup.
 ---@field row_offset integer Initial row offset relative to the cursor for the first popup.
@@ -70,12 +70,14 @@ local M = {}
 --- *OverlookAdapterOptions*
 ---
 ---@class OverlookAdapterOptions
+---
 ---@field marks? table Configuration for the 'marks' adapter.
 -- ---@field lsp? table Placeholder for future LSP adapter config
 
 --- *OverlookOptions*
 ---
 ---@class OverlookOptions
+---
 ---@field ui OverlookUiOptions UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
@@ -86,8 +88,10 @@ local M = {}
 --- popups, as well as adapter-specific settings. Users can override any of these
 --- values by passing a configuration table to |require("overlook").setup()|.
 ---
----@eval return require("mini.doc").afterlines_to_code(MiniDoc.current.eval_section)
+---@seealso |overlook-config.setup()|
+---
 ---@type OverlookOptions
+---@eval return require("mini.doc").afterlines_to_code(MiniDoc.current.eval_section)
 ---@tag overlook-config.defaults
 local defaults = {
   -- UI settings for the popup windows
@@ -166,6 +170,7 @@ end
 --- `require('overlook.config').options` if they ensure proper setup timing.
 ---
 ---@return OverlookOptions The active configuration table
+---
 ---@tag overlook-config.get
 ---@usage >lua
 ---   local opts = require("overlook.config").get()

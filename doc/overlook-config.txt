@@ -33,8 +33,7 @@ This module is typically used indirectly through the main overlook setup:
 
 Direct access to configuration:
 >lua
-  local config = require('overlook.config')
-  local current_opts = config.get()
+  local opts = require('overlook.config').get()
 <
 ------------------------------------------------------------------------------
 Type Definitions
@@ -56,6 +55,7 @@ string[]     Custom border array as defined by nvim_open_win
 
 Class ~
 {OverlookUiOptions}
+
 Fields ~
 {border}  `(Border)` style for popups.
 {z_index_base} `(integer)` Base z-index for the first popup.
@@ -75,6 +75,7 @@ Fields ~
 
 Class ~
 {OverlookAdapterOptions}
+
 Fields ~
 {marks} `(optional)` `(table)` Configuration for the 'marks' adapter.
 
@@ -83,6 +84,7 @@ Fields ~
 
 Class ~
 {OverlookOptions}
+
 Fields ~
 {ui} `(OverlookUiOptions)` UI settings for the popup windows.
 {adapters} `(OverlookAdapterOptions)` Adapter-specific configurations.
@@ -97,6 +99,11 @@ These options control the appearance, behavior, and positioning of floating
 popups, as well as adapter-specific settings. Users can override any of these
 values by passing a configuration table to |require("overlook").setup()|.
 
+See also ~
+|overlook-config.setup()|
+
+Type ~
+`(OverlookOptions)`
 >lua
   local defaults = {
     -- UI settings for the popup windows
@@ -148,9 +155,6 @@ values by passing a configuration table to |require("overlook").setup()|.
     on_stack_empty = nil,
   }
 <
-Type ~
-`(OverlookOptions)`
-
 ------------------------------------------------------------------------------
                                                            *overlook-config.get*
                                    `M.get`()
@@ -164,7 +168,8 @@ External modules can also access configuration directly via
 `require('overlook.config').options` if they ensure proper setup timing.
 
 Return ~
-`(OverlookOptions)` The active configuration table
+`(OverlookOptions)` options The active configuration table
+
 Usage ~
 >lua
   local opts = require("overlook.config").get()
