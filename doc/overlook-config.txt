@@ -1,8 +1,7 @@
 ==============================================================================
 ------------------------------------------------------------------------------
                                                                *overlook-config*
-*overlook.config* Configuration management for overlook.nvim
-*OverlookConfig*
+Configuration for overlook.nvim
 
 Configuration module for overlook.nvim, providing default settings and user
 customization capabilities for popup behavior, styling, and adapter configurations.
@@ -41,7 +40,7 @@ Direct access to configuration:
 Type Definitions
 
 ------------------------------------------------------------------------------
-OverlookBorderStyle
+*OverlookBorderStyle*
 
 "none"       No border
 "single"     Single line border using box-drawing characters
@@ -53,7 +52,7 @@ OverlookBorderStyle
 string[]     Custom border array as defined by nvim_open_win
 
 ------------------------------------------------------------------------------
-OverlookUiOptions
+*OverlookUiOptions*
 
 Class ~
 {OverlookUiOptions}
@@ -72,7 +71,7 @@ Fields ~
 {keys} `(optional)` `(table<string, string>)` Keymaps specific to the popup UI.
 
 ------------------------------------------------------------------------------
-OverlookAdapterOptions
+*OverlookAdapterOptions*
 
 Class ~
 {OverlookAdapterOptions}
@@ -80,7 +79,7 @@ Fields ~
 {marks} `(optional)` `(table)` Configuration for the 'marks' adapter.
 
 ------------------------------------------------------------------------------
-OverlookOptions
+*OverlookOptions*
 
 Class ~
 {OverlookOptions}
@@ -90,11 +89,8 @@ Fields ~
 {on_stack_empty} `(optional)` `(fun())` Optional function called when the last Overlook popup closes.
 
 ------------------------------------------------------------------------------
-Default Configuration
-
-------------------------------------------------------------------------------
-                                                                     *M.options*
-                                  `M.options`
+                                                      *overlook-config.defaults*
+                                   `defaults`
 Default configuration options for overlook.nvim.
 
 These options control the appearance, behavior, and positioning of floating
@@ -102,7 +98,7 @@ popups, as well as adapter-specific settings. Users can override any of these
 values by passing a configuration table to |require("overlook").setup()|.
 
 >lua
-  M.options = {
+  local defaults = {
     -- UI settings for the popup windows
     ui = {
       -- Border style for popups. Accepts same values as nvim_open_win's 'border' option
@@ -156,28 +152,7 @@ Type ~
 `(OverlookOptions)`
 
 ------------------------------------------------------------------------------
-Configuration Management Functions
-
-------------------------------------------------------------------------------
-                                                                     *M.setup()*
-                             `M.setup`({user_opts})
-Initialize and configure overlook.nvim with user-provided options.
-
-Merges user-provided configuration with default values using deep merge
-semantics. This allows users to override specific configuration values
-while preserving defaults for unspecified options.
-
-Should be called from the user's Neovim configuration, typically via
-`require("overlook").setup(opts)`.
-
-Parameters ~
-{user_opts} `(optional)` `(table)` User configuration options. Can contain any subset of OverlookOptions fields.
-Usage ~
->lua
-  require("overlook").setup({ ui = { border = "single", row_offset = 2 } })
-<
-------------------------------------------------------------------------------
-                                                                       *M.get()*
+                                                           *overlook-config.get*
                                    `M.get`()
 Get the current active configuration.
 
@@ -190,6 +165,9 @@ External modules can also access configuration directly via
 
 Return ~
 `(OverlookOptions)` The active configuration table
-
+Usage ~
+>lua
+  local opts = require("overlook.config").get()
+<
 
  vim:tw=78:ts=8:noet:ft=help:norl:

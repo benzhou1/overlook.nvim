@@ -60,8 +60,19 @@ local function setup_autocmd()
   })
 end
 
--- Setup function: Call this from your main Neovim config
+--- Initialize and configure overlook.nvim with user-provided options.
+---
+--- Should be called from the user's Neovim configuration, typically via
+--- `require("overlook").setup(opts)`.
+---
+--- see |overlook-config.defaults| for details.
+---
 ---@param opts? table User configuration options (optional).
+---
+---@usage >lua
+---   require("overlook").setup({ ui = { border = "single", row_offset = 2 } })
+--- <
+---@tag overlook-setup
 function M.setup(opts)
   require("overlook.config").setup(opts)
   setup_autocmd()

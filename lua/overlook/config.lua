@@ -1,5 +1,4 @@
---- *overlook.config* Configuration management for overlook.nvim
---- *OverlookConfig*
+--- Configuration for overlook.nvim
 ---
 --- Configuration module for overlook.nvim, providing default settings and user
 --- customization capabilities for popup behavior, styling, and adapter configurations.
@@ -40,7 +39,7 @@ local M = {}
 
 ---@text Type Definitions
 
---- OverlookBorderStyle
+--- *OverlookBorderStyle*
 ---
 ---@alias OverlookBorderStyle
 ---| "none"       No border
@@ -52,7 +51,7 @@ local M = {}
 ---| "shadow"     Border with shadow effect
 ---| string[]     Custom border array as defined by nvim_open_win
 
---- OverlookUiOptions
+--- *OverlookUiOptions*
 ---
 ---@class OverlookUiOptions
 ---@field border OverlookBorderStyle Border style for popups.
@@ -68,20 +67,18 @@ local M = {}
 ---@field size_ratio number Default size ratio (0.0 to 1.0) used to calculate initial size.
 ---@field keys? table<string, string> Keymaps specific to the popup UI.
 
---- OverlookAdapterOptions
+--- *OverlookAdapterOptions*
 ---
 ---@class OverlookAdapterOptions
 ---@field marks? table Configuration for the 'marks' adapter.
 -- ---@field lsp? table Placeholder for future LSP adapter config
 
---- OverlookOptions
+--- *OverlookOptions*
 ---
 ---@class OverlookOptions
 ---@field ui OverlookUiOptions UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
-
----@text Default Configuration
 
 --- Default configuration options for overlook.nvim.
 ---
@@ -91,7 +88,8 @@ local M = {}
 ---
 ---@eval return require("mini.doc").afterlines_to_code(MiniDoc.current.eval_section)
 ---@type OverlookOptions
-M.options = {
+---@tag overlook-config.defaults
+local defaults = {
   -- UI settings for the popup windows
   ui = {
     -- Border style for popups. Accepts same values as nvim_open_win's 'border' option
@@ -142,26 +140,17 @@ M.options = {
 }
 --minidoc_afterlines_end
 
----@text Configuration Management Functions
+--- user-provided options, merged with defaults
+---@private
+local options = vim.deepcopy(defaults)
 
---- Initialize and configure overlook.nvim with user-provided options.
----
---- Merges user-provided configuration with default values using deep merge
---- semantics. This allows users to override specific configuration values
---- while preserving defaults for unspecified options.
----
---- Should be called from the user's Neovim configuration, typically via
---- `require("overlook").setup(opts)`.
----
+---@private
 ---@param user_opts? table User configuration options. Can contain any subset of OverlookOptions fields.
----@usage >lua
----   require("overlook").setup({ ui = { border = "single", row_offset = 2 } })
---- <
 function M.setup(user_opts)
   if user_opts then
     -- Use deep_extend to merge nested tables like 'ui' and 'adapters'.
     -- 'force' mode replaces arrays entirely if present, usually desired for config.
-    M.options = vim.tbl_deep_extend("force", M.options, user_opts or {})
+    options = vim.tbl_deep_extend("force", options, user_opts or {})
   end
   -- You could add validation for option values here later if needed.
   -- For example, ensure min_width is less than default_width.
@@ -177,8 +166,12 @@ end
 --- `require('overlook.config').options` if they ensure proper setup timing.
 ---
 ---@return OverlookOptions The active configuration table
+---@tag overlook-config.get
+---@usage >lua
+---   local opts = require("overlook.config").get()
+--- <
 function M.get()
-  return M.options
+  return options
 end
 
 return M

@@ -68,7 +68,7 @@ function M.update_keymap()
 
   local top_item = Stack.top() -- Use local require
   local top_win_id = top_item and top_item.winid or nil
-  local close_key = Config.options.ui.keys.close
+  local close_key = Config.get().ui.keys.close
 
   -- Target buffer for the keymap is the buffer in the current window ONLY if it's the top popup
   local target_bufnr_for_keymap = (top_win_id and current_win == top_win_id) and current_buf or nil

@@ -1,9 +1,4 @@
---- *overlook.api* Public API functions for overlook.nvim
---- *OverlookApi*
----
---- MIT License Copyright (c) 2025 William Hsieh
----
---- ==============================================================================
+--- Public API functions for overlook.nvim
 ---
 --- overlook.api provides the public API functions for overlook.nvim, a plugin
 --- for creating stackable floating popups to peek at code locations without
@@ -20,7 +15,11 @@ local Ui = require("overlook.ui")
 
 local M = {}
 
+---@text Table of contents
+---@toc
+
 ---@text Peek Functions
+---@toc_entry Peek Functions
 
 --- Peek at the LSP definition under the cursor.
 ---
@@ -35,6 +34,8 @@ local M = {}
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pd", require("overlook.api").peek_definition)
 --- <
+---@tag overlook-api.peek_definition
+---@toc_entry
 M.peek_definition = function()
   Peek.definition()
 end
@@ -48,6 +49,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pp", require("overlook.api").peek_cursor)
 --- <
+---@tag overlook-api.peek_cursor
+---@toc_entry
 M.peek_cursor = function()
   Peek.cursor()
 end
@@ -63,6 +66,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pm", require("overlook.api").peek_mark)
 --- <
+---@tag overlook-api.peek_mark
+---@toc_entry
 M.peek_mark = function()
   Peek.marks()
   vim.ui.input({ prompt = "Overlook Mark:" }, function(input)
@@ -78,6 +83,7 @@ M.peek_mark = function()
   end)
 end
 
+---@toc_entry Stack Management Functions
 ---@text Stack Management Functions
 
 --- Restore all previously closed popups in the current stack.
@@ -89,6 +95,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pU", require("overlook.api").restore_all_popups)
 --- <
+---@tag overlook-api.restore_all_popups
+---@toc_entry
 M.restore_all_popups = function()
   local stack = require("overlook.stack").get_current_stack()
   stack:restore_all()
@@ -102,6 +110,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pu", require("overlook.api").restore_popup)
 --- <
+---@tag overlook-api.restore_popup
+---@toc_entry
 M.restore_popup = function()
   local stack = require("overlook.stack").get_current_stack()
   stack:restore()
@@ -116,6 +126,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pc", require("overlook.api").close_all)
 --- <
+---@tag overlook-api.close_all
+---@toc_entry
 M.close_all = function()
   Stack.clear()
 end
@@ -142,6 +154,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>ps", require("overlook.api").open_in_split)
 --- <
+---@tag overlook-api.open_in_split
+---@toc_entry
 M.open_in_split = function()
   promote_top_to_window("split")
 end
@@ -158,6 +172,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pv", require("overlook.api").open_in_vsplit)
 --- <
+---@tag overlook-api.open_in_vsplit
+---@toc_entry
 M.open_in_vsplit = function()
   promote_top_to_window("vsplit")
 end
@@ -173,6 +189,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pt", require("overlook.api").open_in_tab)
 --- <
+---@tag overlook-api.open_in_tab
+---@toc_entry
 M.open_in_tab = function()
   promote_top_to_window("tabnew")
 end
@@ -189,6 +207,8 @@ end
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>po", require("overlook.api").open_in_original_window)
 --- <
+---@tag overlook-api.open_in_original_window
+---@toc_entry
 M.open_in_original_window = function()
   Ui.promote_popup_to_window("buffer")
 end

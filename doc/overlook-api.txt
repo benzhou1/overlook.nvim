@@ -1,12 +1,7 @@
 ==============================================================================
 ------------------------------------------------------------------------------
                                                                   *overlook-api*
-*overlook.api* Public API functions for overlook.nvim
-*OverlookApi*
-
-MIT License Copyright (c) 2025 William Hsieh
-
-==============================================================================
+Public API functions for overlook.nvim
 
 overlook.api provides the public API functions for overlook.nvim, a plugin
 for creating stackable floating popups to peek at code locations without
@@ -16,10 +11,25 @@ These functions are the primary interface for users to interact with the
 plugin through key mappings and commands.
 
 ------------------------------------------------------------------------------
+Table of contents
+  Peek Functions ...........................................................
+  ............................................. |overlook-api.peek_definition|
+  ................................................. |overlook-api.peek_cursor|
+  ................................................... |overlook-api.peek_mark|
+  Stack Management Functions ...............................................
+  .......................................... |overlook-api.restore_all_popups|
+  ............................................... |overlook-api.restore_popup|
+  ................................................... |overlook-api.close_all|
+  ............................................... |overlook-api.open_in_split|
+  .............................................. |overlook-api.open_in_vsplit|
+  ................................................. |overlook-api.open_in_tab|
+  ..................................... |overlook-api.open_in_original_window|
+
+------------------------------------------------------------------------------
 Peek Functions
 
 ------------------------------------------------------------------------------
-                                                           *M.peek_definition()*
+                                                  *overlook-api.peek_definition*
                              `M.peek_definition`()
 Peek at the LSP definition under the cursor.
 
@@ -36,7 +46,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pd", require("overlook.api").peek_definition)
 <
 ------------------------------------------------------------------------------
-                                                               *M.peek_cursor()*
+                                                      *overlook-api.peek_cursor*
                                `M.peek_cursor`()
 Peek at the current cursor position.
 
@@ -49,7 +59,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pp", require("overlook.api").peek_cursor)
 <
 ------------------------------------------------------------------------------
-                                                                 *M.peek_mark()*
+                                                        *overlook-api.peek_mark*
                                 `M.peek_mark`()
 Peek at a specific mark location.
 
@@ -67,7 +77,7 @@ Usage ~
 Stack Management Functions
 
 ------------------------------------------------------------------------------
-                                                        *M.restore_all_popups()*
+                                               *overlook-api.restore_all_popups*
                             `M.restore_all_popups`()
 Restore all previously closed popups in the current stack.
 
@@ -80,7 +90,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pU", require("overlook.api").restore_all_popups)
 <
 ------------------------------------------------------------------------------
-                                                             *M.restore_popup()*
+                                                    *overlook-api.restore_popup*
                               `M.restore_popup`()
 Restore the most recently closed popup.
 
@@ -92,7 +102,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pu", require("overlook.api").restore_popup)
 <
 ------------------------------------------------------------------------------
-                                                                 *M.close_all()*
+                                                        *overlook-api.close_all*
                                 `M.close_all`()
 Close all overlook popups across all windows.
 
@@ -108,7 +118,7 @@ Usage ~
 Window Promotion Functions (open popups in regular windows)
 
 ------------------------------------------------------------------------------
-                                                             *M.open_in_split()*
+                                                    *overlook-api.open_in_split*
                               `M.open_in_split`()
 Open the top popup to a horizontal split window.
 
@@ -124,7 +134,7 @@ Usage ~
   vim.keymap.set("n", "<leader>ps", require("overlook.api").open_in_split)
 <
 ------------------------------------------------------------------------------
-                                                            *M.open_in_vsplit()*
+                                                   *overlook-api.open_in_vsplit*
                               `M.open_in_vsplit`()
 Open the top popup to a vertical split window.
 
@@ -140,7 +150,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pv", require("overlook.api").open_in_vsplit)
 <
 ------------------------------------------------------------------------------
-                                                               *M.open_in_tab()*
+                                                      *overlook-api.open_in_tab*
                                `M.open_in_tab`()
 Open the top popup to a new tab.
 
@@ -155,7 +165,7 @@ Usage ~
   vim.keymap.set("n", "<leader>pt", require("overlook.api").open_in_tab)
 <
 ------------------------------------------------------------------------------
-                                                   *M.open_in_original_window()*
+                                          *overlook-api.open_in_original_window*
                          `M.open_in_original_window`()
 Open the top popup to replace the original window content.
 

@@ -2,6 +2,8 @@
 
 local doc = require("mini.doc")
 
+doc.generate({ "lua/overlook/init.lua" }, "doc/overlook-setup.txt")
+
 doc.generate({ "lua/overlook/api.lua" }, "doc/overlook-api.txt")
 
 doc.generate({ "lua/overlook/config.lua" }, "doc/overlook-config.txt")
