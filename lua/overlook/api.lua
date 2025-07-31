@@ -132,7 +132,10 @@ M.close_all = function()
   Stack.clear()
 end
 
----@text Window Promotion Functions (open popups in regular windows)
+---@text Window Promotion Functions
+---
+--- Open popups in regular windows.
+---@toc_entry Window Promotion Functions
 
 --- Promotes the top Overlook popup to a regular window (split, vsplit, or tab).
 ---@private

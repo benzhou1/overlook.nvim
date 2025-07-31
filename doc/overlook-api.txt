@@ -20,6 +20,7 @@ Table of contents
   .......................................... |overlook-api.restore_all_popups|
   ............................................... |overlook-api.restore_popup|
   ................................................... |overlook-api.close_all|
+  Window Promotion Functions ...............................................
   ............................................... |overlook-api.open_in_split|
   .............................................. |overlook-api.open_in_vsplit|
   ................................................. |overlook-api.open_in_tab|
@@ -115,7 +116,9 @@ Usage ~
   vim.keymap.set("n", "<leader>pc", require("overlook.api").close_all)
 <
 ------------------------------------------------------------------------------
-Window Promotion Functions (open popups in regular windows)
+Window Promotion Functions
+
+Open popups in regular windows.
 
 ------------------------------------------------------------------------------
                                                     *overlook-api.open_in_split*
