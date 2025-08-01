@@ -46,6 +46,10 @@ end
 --- the current buffer content. This is useful for maintaining visual context
 --- while navigating to other locations.
 ---
+--- For example, if you are editing a file and want to quickly peek at the
+--- function signature or variable declaration, you can create a popup
+--- and then navigate to the desired location without losing the context.
+---
 ---@usage >lua
 ---   vim.keymap.set("n", "<leader>pp", require("overlook.api").peek_cursor)
 --- <
