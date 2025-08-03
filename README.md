@@ -4,7 +4,7 @@ Stackable floating popups for peeking at code locations without overlooking wher
 
 ## Demo
 
-[Video placeholder - Demo of overlook.nvim in action]
+https://github.com/user-attachments/assets/ac784f7e-e4ad-45be-b2f5-60e8318c8089
 
 ## Features
 
