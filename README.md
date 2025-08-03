@@ -1,29 +1,45 @@
 # overlook.nvim
 
-Stackable floating popups for peeking at code locations without overlooking where you are.
+Explore without losing context. Stackable, editable floating popups for Neovim.
 
 ## Demo
 
 https://github.com/user-attachments/assets/ac784f7e-e4ad-45be-b2f5-60e8318c8089
 
-## Features
+## The Problem
 
-- 🔍 **Peek at definitions** - View LSP definitions in floating windows
-- ✏️ **Editable popups** - All popups are fully modifiable buffers, perfect for quick edits
-- 📚 **Stack management** - Stacks of popups are window-local, multiple stacks are allowed
-- 🔄 **Restore popups** - Undo closed popups
-- 🪟 **Window promotion** - Convert popups to regular splits/tabs
-- ⚙️ **Highly customizable** - Configure borders, sizes, offsets, and keybindings
+You know the frustration: you're deep in a function, need to check a definition, so you jump to it... and now you've lost your place.
+Or you use a peek feature but can't fix that typo you just spotted.
+
+## The Solution
+
+`overlook.nvim` creates **stackable floating popups** that are **actual buffers** - edit them, save them, navigate from them. Build a visual trail of your code exploration without ever losing where you started.
+
+## Key Features
+
+- 🔍 **Peek at definitions** - View LSP definitions, marks, or any location in floating windows
+- ✏️ **Actually editable** - Spot a bug? Fix it right there in the popup and `:w` to save
+- 📚 **Visual stack navigation** - See your entire exploration path as cascading popups
+- 🔄 **Undo your exploration** - Accidentally closed a popup? Bring it back with `restore_popup()`
+- 🪟 **Popup promotion** - Found something important? Convert any popup to a split/tab
+- 🎯 **Window-local stacks** - Each window maintains its own popup stack for parallel exploration
 
 ## Why overlook.nvim?
 
 The core philosophy is simple: **popups are buffers**. Edit them, save them, navigate them - they behave exactly like any other window.
 
-- Make quick fixes without losing your place
-- Switch buffers inside popups - `:bnext`, `<C-^>`, fzf, all work normally
-- Create nested popups to trace through definition chains
-- Each stack is window-local, so you can have multiple exploration paths
-- Visually backtrace-able modification history
+### Real-world use cases:
+
+1. **Trace through call chains**: Peek definition → find another reference → peek again → you now have a visual stack showing your exploration path
+2. **Fix as you explore**: Reviewing a function and spot a typo? Fix it in the popup and save - no context switching needed
+3. **Visual debugging**: Build a breadcrumb trail of function calls while debugging
+
+### What makes it different:
+
+- All your keybindings work normally in popups
+- Switch buffers inside popups - `:bnext`, `<C-^>`, telescope/fzf all work
+- Popups automatically offset and resize to stay readable when stacked
+- Full undo/redo support for your exploration history
 
 ## Installation
 
@@ -33,10 +49,29 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 {
   "WilliamHsieh/overlook.nvim",
   opts = {},
+
+  -- Optional: set up common keybindings
+  keys = {
+    { "<leader>pd", function() require("overlook.api").peek_definition() end, desc = "Overlook: Peek definition" },
+    { "<leader>pc", function() require("overlook.api").close_all() end, desc = "Overlook: Close all popup" },
+    { "<leader>pu", function() require("overlook.api").restore_popup() end, desc = "Overlook: Restore popup" },
+  },
 }
 ```
 
-## Setup
+## Quick Start
+
+1. Install the plugin with your favorite package manager
+2. Add a keybinding for `peek_definition()`
+3. Navigate to any symbol and trigger the peek
+4. Edit the popup content if needed
+5. Press `q` to close or continue exploring
+
+That's it! No complex setup required.
+
+## Configuration
+
+`overlook.nvim` works out of the box, but you can customize everything, these are default options:
 
 ```lua
 require("overlook").setup({
@@ -58,11 +93,6 @@ require("overlook").setup({
     },
   },
 
-  -- Adapter configurations
-  adapters = {
-    marks = {},                     -- Marks adapter config
-  },
-
   -- Optional callback when all popups are closed
   on_stack_empty = function()
     -- Your custom logic here
@@ -72,9 +102,7 @@ require("overlook").setup({
 
 ## Usage
 
-### Keybindings
-
-Set up your preferred keybindings:
+### Essential keybindings
 
 ```lua
 vim.keymap.set("n", "<leader>pd", require("overlook.api").peek_definition, { desc = "Peek definition" })
@@ -90,6 +118,8 @@ vim.keymap.set("n", "<leader>po", require("overlook.api").open_in_original_windo
 
 ### API Functions
 
+Check `:h overlook-api` for more details.
+
 - `peek_definition()` - Peek at the LSP definition under cursor
 - `peek_cursor()` - Create a popup at current cursor position
 - `peek_mark()` - Prompt for a mark and peek at its location
@@ -100,17 +130,6 @@ vim.keymap.set("n", "<leader>po", require("overlook.api").open_in_original_windo
 - `open_in_vsplit()` - Promote popup to vertical split
 - `open_in_tab()` - Promote popup to new tab
 - `open_in_original_window()` - Replace current window with popup content
-
-### Working with Popups
-
-Popups in overlook.nvim are **fully functional buffers**, you can:
-
-- Edit content directly in the popup
-- Save changes with `:w`
-- Use all your normal keybindings and commands
-- Navigate with LSP goto definition to create nested popups
-
-> **Tip:** Press `q` inside any popup to close it and return to your previous context.
 
 ## Acknowledgments
 
