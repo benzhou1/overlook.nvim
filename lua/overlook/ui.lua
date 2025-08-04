@@ -60,6 +60,7 @@ function M.promote_popup_to_window(open_command)
   vim.api.nvim_win_call(0, function()
     vim.cmd("normal! zz")
   end)
+  vim.bo.buflisted = true
 end
 
 return M
