@@ -1,17 +1,25 @@
+local Config = require("overlook.config")
+
 local M = {}
 
-local adapters = {
+local default_adapters = {
   marks = require("overlook.adapter.marks"),
   definition = require("overlook.adapter.definition"),
   cursor = require("overlook.adapter.cursor"),
 }
 
+local get_adapter_if_valid = function(adapter)
+  return adapter and type(adapter.get) == "function" and adapter or nil
+end
+
 --- Generic peek function that calls the appropriate adapter's get() method
 --- @param adapter_type string The type of adapter ('marks', 'definition', etc.)
 --- @param ... any Arguments to pass to the adapter's get() function
 local function peek_with_adapters(adapter_type, ...)
-  local adapter = adapters[adapter_type]
-  if not adapter or type(adapter.get) ~= "function" then
+  local adapter = get_adapter_if_valid(Config.get().adapters[adapter_type])
+    or get_adapter_if_valid(default_adapters[adapter_type])
+
+  if not adapter then
     vim.notify(
       "Overlook Error: Invalid adapter type or adapter missing get() function: " .. adapter_type,
       vim.log.levels.ERROR
