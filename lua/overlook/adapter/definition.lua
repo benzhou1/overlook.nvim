@@ -4,7 +4,7 @@ local M = {}
 
 --- Gets the options required for the peek popup for the definition under the cursor.
 --- Returns nil if no definition is found or an error occurs.
---- @return table | nil opts Table suitable for overlook.ui.create_popup, or nil on error/not found.
+---@return OverlookPopupOptions? opts Table suitable for overlook.ui.create_popup, or nil on error.
 function M.get()
   local current_win = api.nvim_get_current_win()
   local current_buf = api.nvim_win_get_buf(current_win)

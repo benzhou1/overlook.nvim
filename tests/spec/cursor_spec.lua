@@ -135,7 +135,7 @@ describe("Cursor Adapter", function()
 
     -- Assert
     assert.are.equal(0, #mock_calls.create_popup) -- Should not be called
-    assert.are.equal(1, #mock_calls.notify)
+    assert.are.equal(2, #mock_calls.notify)
     local notify_call = mock_calls.notify[1]
     assert.matches("Cannot peek in unnamed buffer", notify_call.msg) -- Use matches for flexibility
     assert.are.equal(vim.log.levels.WARN, notify_call.level)

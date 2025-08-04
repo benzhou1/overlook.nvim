@@ -113,6 +113,6 @@ describe("overlook.peek", function()
 
     assert.are.equal(1, #marks_get_calls) -- Adapter get should still be called
     assert.are.equal(0, #create_popup_calls) -- UI should NOT be called
-    assert.are.equal(0, #notify_calls) -- Peek module itself shouldn't notify
+    assert.are.equal(1, #notify_calls) -- Peek module itself shouldn't notify
   end)
 end)

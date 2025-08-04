@@ -19,8 +19,10 @@ local function peek_with_adapters(adapter_type, ...)
     return
   end
 
+  ---@type OverlookPopupOptions?
   local opts = adapter.get(...)
   if not opts then
+    vim.notify("Overlook Error: Adapter '" .. adapter_type .. "' returned nil options.", vim.log.levels.ERROR)
     return
   end
 
