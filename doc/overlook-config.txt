@@ -146,9 +146,11 @@ Type ~
 
     -- Adapter-specific configurations
     adapters = {
-      -- Configuration for the 'marks' adapter
-      marks = {},
-      -- lsp = {}, -- Placeholder for future LSP adapter config
+      -- check `overlook.adapter.cursor` for implementation details
+      your_custom_adapter = {
+        ---@return OverlookPopupOptions? @Table suitable for overlook.ui.create_popup, or nil on error.
+        get = function() end,
+      },
     },
 
     -- Optional hook called when the last Overlook popup closes
