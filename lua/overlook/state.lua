@@ -79,7 +79,7 @@ function M.update_keymap()
   end
 
   -- State needs changing: Clear old map first (if any)
-  if currently_mapped_info.bufnr then
+  if currently_mapped_info.bufnr and vim.api.nvim_buf_is_loaded(currently_mapped_info.bufnr) then
     -- Clear keymap
     vim.keymap.del("n", close_key, { buffer = currently_mapped_info.bufnr })
 
