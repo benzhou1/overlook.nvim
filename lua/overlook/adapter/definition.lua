@@ -8,7 +8,7 @@ function M.get()
   local current_win = api.nvim_get_current_win()
   local current_buf = api.nvim_win_get_buf(current_win)
 
-  local params = vim.lsp.util.make_position_params(current_win, 'utf-8')
+  local params = vim.lsp.util.make_position_params(current_win, "utf-8")
   local timeout_ms = 1000 -- Adjust timeout as needed
 
   -- Use synchronous LSP request
