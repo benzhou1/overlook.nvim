@@ -1,5 +1,4 @@
 local api = vim.api
-local lsp = vim.lsp
 local M = {}
 
 --- Gets the options required for the peek popup for the definition under the cursor.
@@ -9,11 +8,11 @@ function M.get()
   local current_win = api.nvim_get_current_win()
   local current_buf = api.nvim_win_get_buf(current_win)
 
-  local params = lsp.util.make_position_params(current_win)
+  local params = vim.lsp.util.make_position_params(current_win, 'utf-8')
   local timeout_ms = 1000 -- Adjust timeout as needed
 
   -- Use synchronous LSP request
-  local result, err = lsp.buf_request_sync(current_buf, "textDocument/definition", params, timeout_ms)
+  local result, err = vim.lsp.buf_request_sync(current_buf, "textDocument/definition", params, timeout_ms)
 
   if err then
     vim.notify("Overlook LSP Error: " .. tostring(err), vim.log.levels.ERROR) -- Use tostring for safety
