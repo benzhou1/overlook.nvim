@@ -110,6 +110,7 @@ vim.keymap.set("n", "<leader>pp", require("overlook.api").peek_cursor, { desc = 
 vim.keymap.set("n", "<leader>pu", require("overlook.api").restore_popup, { desc = "Restore last popup" })
 vim.keymap.set("n", "<leader>pU", require("overlook.api").restore_all_popups, { desc = "Restore all popups" })
 vim.keymap.set("n", "<leader>pc", require("overlook.api").close_all, { desc = "Close all popups" })
+vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus, { desc = "Switch focus" })
 vim.keymap.set("n", "<leader>ps", require("overlook.api").open_in_split, { desc = "Open popup in split" })
 vim.keymap.set("n", "<leader>pv", require("overlook.api").open_in_vsplit, { desc = "Open popup in vsplit" })
 vim.keymap.set("n", "<leader>pt", require("overlook.api").open_in_tab, { desc = "Open popup in tab" })
@@ -126,6 +127,7 @@ Check `:h overlook-api` for more details.
 - `restore_popup()` - Restore the last closed popup
 - `restore_all_popups()` - Restore all closed popups
 - `close_all()` - Close all overlook popups
+- `switch_focus()` - Switch focus between popups and root window
 - `open_in_split()` - Promote popup to horizontal split
 - `open_in_vsplit()` - Promote popup to vertical split
 - `open_in_tab()` - Promote popup to new tab
