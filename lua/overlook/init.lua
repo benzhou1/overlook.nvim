@@ -14,7 +14,7 @@ local function setup_autocmd()
         return
       end
 
-      local stacks = require("overlook.stack").stack_instances
+      local stacks = require("overlook.stack").instances
       for _, stack in pairs(stacks) do
         if stack:top() and stack:top().winid == winid then
           stack:on_close()
