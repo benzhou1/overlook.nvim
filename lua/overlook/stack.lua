@@ -160,7 +160,7 @@ end
 local M = {}
 
 ---@type table<integer, OverlookStack>
-M.stack_instances = {} -- Key: root_winid, Value: Stack object
+M.instances = {} -- Key: root_winid, Value: Stack object
 
 ---Creates a new Stack instance.
 ---@param root_winid integer
@@ -188,10 +188,10 @@ end
 
 -- assuming this is root window, not popup
 function M.win_get_stack(winid)
-  if not M.stack_instances[winid] then
-    M.stack_instances[winid] = M.new(winid)
+  if not M.instances[winid] then
+    M.instances[winid] = M.new(winid)
   end
-  return M.stack_instances[winid]
+  return M.instances[winid]
 end
 
 function M.get_current_stack()

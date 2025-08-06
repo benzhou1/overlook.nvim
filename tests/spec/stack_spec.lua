@@ -41,7 +41,7 @@ describe("overlook.stack", function()
 
   before_each(function()
     -- Reset stack instances
-    stack.stack_instances = {}
+    stack.instances = {}
 
     -- Mock vim.api functions with proper behavior
     api_mock = mock(vim.api, true)
@@ -243,7 +243,7 @@ describe("overlook.stack", function()
 
     before_each(function()
       test_stack = stack.new(TEST_CONSTANTS.DEFAULT_WINID)
-      stack.stack_instances[TEST_CONSTANTS.DEFAULT_WINID] = test_stack
+      stack.instances[TEST_CONSTANTS.DEFAULT_WINID] = test_stack
     end)
 
     it("should remove window by ID from middle of stack", function()
