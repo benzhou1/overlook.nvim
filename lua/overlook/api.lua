@@ -40,6 +40,29 @@ M.peek_definition = function()
   Peek.definition()
 end
 
+--- Switch focus between the top popup and the root window.
+---
+---@usage >lua
+---   vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
+--- <
+---@tag overlook-api.switch_focus
+---@toc_entry
+M.switch_focus = function()
+  local switch_to_winid = nil
+  if vim.w.is_overlook_popup then
+    switch_to_winid = vim.w.overlook_popup.root_winid
+  elseif Stack.instances[vim.api.nvim_get_current_win()] and not Stack.empty() then
+    switch_to_winid = Stack.top().winid
+  end
+
+  if switch_to_winid == nil then
+    vim.notify("Overlook: no popup to focus")
+    return
+  end
+
+  pcall(vim.api.nvim_set_current_win, switch_to_winid)
+end
+
 --- Peek at the current cursor position.
 ---
 --- Creates a floating popup window at the current cursor position, displaying
