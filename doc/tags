@@ -13,6 +13,7 @@ overlook-api.peek_definition	overlook-api.txt	/*overlook-api.peek_definition*
 overlook-api.peek_mark	overlook-api.txt	/*overlook-api.peek_mark*
 overlook-api.restore_all_popups	overlook-api.txt	/*overlook-api.restore_all_popups*
 overlook-api.restore_popup	overlook-api.txt	/*overlook-api.restore_popup*
+overlook-api.switch_focus	overlook-api.txt	/*overlook-api.switch_focus*
 overlook-config	overlook-config.txt	/*overlook-config*
 overlook-config.defaults	overlook-config.txt	/*overlook-config.defaults*
 overlook-config.get	overlook-config.txt	/*overlook-config.get*

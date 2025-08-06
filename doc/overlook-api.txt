@@ -14,6 +14,7 @@ plugin through key mappings and commands.
 Table of contents
   Peek Functions ...........................................................
   ............................................. |overlook-api.peek_definition|
+  ................................................ |overlook-api.switch_focus|
   ................................................. |overlook-api.peek_cursor|
   ................................................... |overlook-api.peek_mark|
   Stack Management Functions ...............................................
@@ -45,6 +46,15 @@ appropriate notification to the user.
 Usage ~
 >lua
   vim.keymap.set("n", "<leader>pd", require("overlook.api").peek_definition)
+<
+------------------------------------------------------------------------------
+                                                     *overlook-api.switch_focus*
+                               `M.switch_focus`()
+Switch focus between the top popup and the root window.
+
+Usage ~
+>lua
+  vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
 <
 ------------------------------------------------------------------------------
                                                       *overlook-api.peek_cursor*
