@@ -36,7 +36,7 @@ function M.new(opts)
     return nil
   end
 
-  this:configure_opened_window_details()
+  M.set_cursor_position(this.winid, this.opts.lnum, this.opts.col)
 
   return this
 end
@@ -197,9 +197,9 @@ function Popup:open_and_register_window()
 end
 
 --- Configures cursor position and view within the newly opened window.
-function Popup:configure_opened_window_details()
-  api.nvim_win_set_cursor(self.winid, { self.opts.lnum, math.max(0, self.opts.col - 1) })
-  vim.api.nvim_win_call(self.winid, function()
+function M.set_cursor_position(winid, lnum, col)
+  api.nvim_win_set_cursor(winid, { lnum, math.max(0, col - 1) })
+  vim.api.nvim_win_call(winid, function()
     vim.cmd("normal! zz")
   end)
 end

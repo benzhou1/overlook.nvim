@@ -1,10 +1,12 @@
+local Popup = require("overlook.popup")
+
 local M = {}
 
 ---Creates and opens a floating window viewing the target buffer.
 ---@param opts OverlookPopupOptions
 ---@return OverlookPopup?
 function M.create_popup(opts)
-  local popup = require("overlook.popup").new(opts)
+  local popup = Popup.new(opts)
   if not popup then
     return nil
   end
@@ -55,11 +57,7 @@ function M.promote_popup_to_window(open_command)
   end
 
   -- set cursor position in the new window
-  -- TODO: extract this to a util function
-  vim.api.nvim_win_set_cursor(0, { lnum, math.max(0, col - 1) })
-  vim.api.nvim_win_call(0, function()
-    vim.cmd("normal! zz")
-  end)
+  Popup.set_cursor_position(0, lnum, col)
   vim.bo.buflisted = true
 end
 
