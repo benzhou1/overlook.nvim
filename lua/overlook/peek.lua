@@ -9,7 +9,22 @@ local default_adapters = {
 }
 
 local get_adapter_if_valid = function(adapter)
-  return adapter and type(adapter.get) == "function" and adapter or nil
+  if adapter == nil then
+    return nil
+  end
+
+  if adapter.async then
+    if not adapter.async_create_popup then
+      return nil
+    end
+  else
+    -- TODO: rename get to sync_get_popup_options
+    if not (type(adapter.get) == "function") then
+      return nil
+    end
+  end
+
+  return adapter
 end
 
 --- Generic peek function that calls the appropriate adapter's get() method
@@ -27,6 +42,15 @@ local function peek_with_adapters(adapter_type, ...)
     return
   end
 
+  -- async adapters
+  if adapter.async then
+    adapter.async_create_popup(function(opts)
+      require("overlook.ui").create_popup(opts)
+    end, ...)
+    return
+  end
+
+  -- synchronous adapters
   ---@type OverlookPopupOptions?
   local opts = adapter.get(...)
   if not opts then
