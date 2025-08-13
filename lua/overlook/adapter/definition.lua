@@ -10,10 +10,14 @@ function M.async_create_popup(create_popup_callback, location_opts)
     on_list = function(tt)
       -- vim.print("LSP Definition Locations: ", vim.inspect(tt))
       local item = tt.items[1]
-      local bufnr = vim.uri_to_bufnr(item.user_data.targetUri)
+      local uri = item.user_data.targetUri or item.user_data.uri
+      if not uri then
+        vim.notify("Overlook: No URI found in LSP definition item: " .. vim.inspect(tt), vim.log.levels.WARN)
+        return
+      end
 
       create_popup_callback {
-        target_bufnr = bufnr,
+        target_bufnr = vim.uri_to_bufnr(uri),
         lnum = item.lnum,
         col = item.col,
         title = item.filename,
