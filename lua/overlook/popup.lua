@@ -42,7 +42,7 @@ function M.new(opts)
 end
 
 --- Initializes instance variables and performs basic validation.
----@param opts table { target_bufnr: integer, lnum: integer, col: integer, title?: string }
+---@param opts OverlookPopupOptions
 ---@return boolean
 function Popup:initialize_state(opts)
   if not opts then
