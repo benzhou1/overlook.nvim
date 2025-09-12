@@ -55,9 +55,10 @@ local M = {}
 ---@class OverlookOptions.UI
 ---
 ---@field border OverlookBorderStyle Border style for popups.
+---@field relative string Relative positioning of the popup window.
 ---@field z_index_base integer Base z-index for the first popup.
----@field row_offset integer Initial row offset relative to the cursor for the first popup.
----@field col_offset integer Initial column offset relative to the cursor for the first popup.
+---@field row_offset integer|fun(row:integer):integer Initial row offset relative to the cursor for the first popup.
+---@field col_offset integer|fun(col:integer):integer Initial column offset relative to the cursor for the first popup.
 ---@field stack_row_offset integer Vertical offset for subsequent stacked popups.
 ---@field stack_col_offset integer Column offset for subsequent stacked popups.
 ---@field width_decrement integer Amount by which the width decreases for each subsequent popup.
@@ -98,6 +99,8 @@ local defaults = {
   ui = {
     -- Border style for popups. Accepts same values as nvim_open_win's 'border' option
     border = "rounded",
+    -- Relative positioning of the popup window.
+    relative = "win",
 
     -- Base z-index for the first popup. Subsequent popups increment from here.
     -- Higher values appear visually on top.

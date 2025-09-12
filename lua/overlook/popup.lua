@@ -76,9 +76,15 @@ function Popup:config_for_first_popup()
   local max_window_height = api.nvim_win_get_height(current_winid) - (winbar_enabled and 1 or 0)
   local max_window_width = api.nvim_win_get_width(current_winid)
 
-  local screen_space_above = cursor_abs_screen_pos.row - win_pos[1] - 1 - (winbar_enabled and 1 or 0)
+  local screen_space_above = cursor_abs_screen_pos.row - 1 - (winbar_enabled and 1 or 0)
+  if Config.ui.relative == "editor" then
+    screen_space_above = screen_space_above - win_pos[1]
+  end
   local screen_space_below = max_window_height - screen_space_above - 1
-  local screen_space_left = cursor_abs_screen_pos.col - win_pos[2] - 1
+  local screen_space_left = cursor_abs_screen_pos.col - 1
+  if Config.ui.relative == "editor" then
+    screen_space_below = screen_space_below - win_pos[2]
+  end
 
   local place_above = screen_space_above > max_window_height / 2
 
@@ -92,7 +98,7 @@ function Popup:config_for_first_popup()
   local width = math.max(Config.ui.min_width, target_width)
 
   local win_config = {
-    relative = "win",
+    relative = Config.ui.relative,
     style = "minimal",
     focusable = true,
 
@@ -100,19 +106,37 @@ function Popup:config_for_first_popup()
     width = width,
     height = height,
 
-    win = current_winid,
     zindex = Config.ui.z_index_base,
-    col = screen_space_left + Config.ui.col_offset,
   }
-
-  if place_above then
-    win_config.row = math.max(0, screen_space_above - height - border_overhead - Config.ui.row_offset)
-  else
-    win_config.row = screen_space_above + 1 + Config.ui.row_offset
+  if Config.ui.relative == "win" then
+    win_config.win = current_winid
   end
 
-  self.root_winid = current_winid
+  local col = screen_space_left
+  local row
+  if place_above then
+    row = screen_space_above - height - border_overhead
+  else
+    row = screen_space_above + 1
+  end
 
+  local row_offset = Config.ui.row_offset
+  local col_offset = Config.ui.col_offset
+  if type(row_offset) == "function" then
+    row_offset = row_offset(row)
+  end
+  if type(col_offset) == "function" then
+    col_offset = col_offset(col)
+  end
+
+  if place_above then
+    win_config.row = math.max(0, row - row_offset)
+  else
+    win_config.row = row + row_offset
+  end
+  win_config.col = col + col_offset
+
+  self.root_winid = current_winid
   return win_config
 end
 
@@ -121,19 +145,24 @@ end
 ---@return table win_config Neovim window configuration table, or nil if an error occurs
 function Popup:config_for_stacked_popup(prev)
   self.root_winid = prev.root_winid
-  return {
-    relative = "win",
+  local win_config = {
+    relative = Config.ui.relative,
     style = "minimal",
     focusable = true,
-    win = prev.winid,
     zindex = Config.ui.z_index_base + Stack.size(),
 
     width = math.max(Config.ui.min_width, prev.width - Config.ui.width_decrement),
     height = math.max(Config.ui.min_height, prev.height - Config.ui.height_decrement),
 
-    row = Config.ui.stack_row_offset - (vim.o.winbar ~= "" and 1 or 0),
-    col = Config.ui.stack_col_offset,
+    col = prev.win_config.col + Config.ui.stack_col_offset,
   }
+  if Config.ui.relative == "win" then
+    win_config.win = prev.winid
+    win_config.row = Config.ui.stack_row_offset - (vim.o.winbar ~= "" and 1 or 0)
+  else
+    win_config.row = prev.win_config.row + Config.ui.stack_row_offset + 1
+  end
+  return win_config
 end
 
 --- Determines and sets the complete window configuration (size, position, border, title).
