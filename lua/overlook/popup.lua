@@ -94,8 +94,17 @@ function Popup:config_for_first_popup()
   local target_height = math.min(math.floor(max_window_height * Config.ui.size_ratio), max_fittable_content_height)
   local target_width = math.floor(max_window_width * Config.ui.size_ratio)
 
-  local height = math.max(Config.ui.min_height, target_height)
-  local width = math.max(Config.ui.min_width, target_width)
+  local min_height = Config.ui.min_height
+  local min_width = Config.ui.min_width
+  if type(min_height) == "function" then
+    min_height = min_height()
+  end
+  if type(min_width) == "function" then
+    min_width = min_width()
+  end
+
+  local height = math.max(min_height, target_height)
+  local width = math.max(min_width, target_width)
 
   local win_config = {
     relative = Config.ui.relative,
@@ -145,14 +154,23 @@ end
 ---@return table win_config Neovim window configuration table, or nil if an error occurs
 function Popup:config_for_stacked_popup(prev)
   self.root_winid = prev.root_winid
+  local min_height = Config.ui.min_height
+  local min_width = Config.ui.min_width
+  if type(min_height) == "function" then
+    min_height = min_height()
+  end
+  if type(min_width) == "function" then
+    min_width = min_width()
+  end
+
   local win_config = {
     relative = Config.ui.relative,
     style = "minimal",
     focusable = true,
     zindex = Config.ui.z_index_base + Stack.size(),
 
-    width = math.max(Config.ui.min_width, prev.width - Config.ui.width_decrement),
-    height = math.max(Config.ui.min_height, prev.height - Config.ui.height_decrement),
+    width = math.max(min_width, prev.width - Config.ui.width_decrement),
+    height = math.max(min_height, prev.height - Config.ui.height_decrement),
 
     col = prev.win_config.col + Config.ui.stack_col_offset,
   }

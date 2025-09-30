@@ -63,8 +63,8 @@ local M = {}
 ---@field stack_col_offset integer Column offset for subsequent stacked popups.
 ---@field width_decrement integer Amount by which the width decreases for each subsequent popup.
 ---@field height_decrement integer Amount by which the height decreases for each subsequent popup.
----@field min_width integer Minimum allowed width for any popup window.
----@field min_height integer Minimum allowed height for any popup window.
+---@field min_width integer|fun():integer Minimum allowed width for any popup window.
+---@field min_height integer|fun():integer Minimum allowed height for any popup window.
 ---@field size_ratio number Default size ratio (0.0 to 1.0) used to calculate initial size.
 ---@field keys? table<string, string> Keymaps specific to the popup UI.
 
