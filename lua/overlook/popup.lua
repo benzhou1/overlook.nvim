@@ -246,6 +246,14 @@ function Popup:open(enter)
     vim.notify("Overlook: post-open setup failed: " .. tostring(err), vim.log.levels.ERROR)
     return false
   end
+
+  if Config.on_popup_show then
+    local hook_ok, hook_err = pcall(Config.on_popup_show, self.winid)
+    if not hook_ok then
+      vim.notify("Overlook: on_popup_show hook error: " .. tostring(hook_err), vim.log.levels.ERROR)
+    end
+  end
+
   return true
 end
 
