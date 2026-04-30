@@ -236,6 +236,13 @@ function Popup:open_and_register_window()
 
   State.register_overlook_popup(self.winid, self.opts.target_bufnr)
 
+  if Config.on_popup_show then
+    local ok, err = pcall(Config.on_popup_show, self.winid)
+    if not ok then
+      vim.notify("Overlook: on_popup_show hook error: " .. tostring(err), vim.log.levels.ERROR)
+    end
+  end
+
   local actual_win_config = vim.api.nvim_win_get_config(self.winid)
   self.width = actual_win_config.width
   self.height = actual_win_config.height

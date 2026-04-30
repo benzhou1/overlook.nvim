@@ -82,6 +82,7 @@ local M = {}
 ---@field ui OverlookOptions.UI UI settings for the popup windows.
 ---@field adapters OverlookAdapterOptions Adapter-specific configurations.
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
+---@field on_popup_show? fun(winid: integer) Optional function called just after a popup window is opened
 
 --- Default configuration options for overlook.nvim.
 ---
@@ -146,6 +147,9 @@ local defaults = {
 
   -- Optional hook called when the last Overlook popup closes
   on_stack_empty = nil,
+
+  -- Optional hook called just after a popup window is opened.
+  on_popup_show = nil,
 }
 --minidoc_afterlines_end
 
