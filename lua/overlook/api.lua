@@ -38,17 +38,6 @@ M.peek_definition = function()
   require("overlook.peek.definition")()
 end
 
---- Switch focus between the top popup and the root window.
----
----@usage >lua
----   vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
---- <
----@tag overlook-api.switch_focus
----@toc_entry
-M.switch_focus = function()
-  Window.current():switch_focus()
-end
-
 --- Peek at the current cursor position.
 ---
 --- Creates a floating popup window at the current cursor position, displaying
@@ -93,6 +82,20 @@ M.peek_mark = function()
       vim.notify("Overlook Error: Invalid mark. Please enter a single character.", vim.log.levels.ERROR)
     end
   end)
+end
+
+---@toc_entry Focus Functions
+---@text Focus Functions
+
+--- Switch focus between the top popup and the root window.
+---
+---@usage >lua
+---   vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
+--- <
+---@tag overlook-api.switch_focus
+---@toc_entry
+M.switch_focus = function()
+  Window.current():switch_focus()
 end
 
 ---@toc_entry Stack Management Functions

@@ -1,7 +1,7 @@
 --- Configuration for overlook.nvim
 ---
 --- Configuration module for overlook.nvim, providing default settings and user
---- customization capabilities for popup behavior, styling, and adapter configurations.
+--- customization capabilities for popup behavior and styling.
 ---
 --- This module handles the setup and merging of user-provided options with
 --- sensible defaults, ensuring the plugin works out of the box while allowing
@@ -12,7 +12,6 @@
 --- - Type-safe configuration with comprehensive field definitions
 --- - Deep merging of user options with sensible defaults
 --- - Flexible UI customization (borders, positioning, sizing)
---- - Adapter-specific configuration support
 --- - Runtime configuration access for other modules
 ---
 --- # Setup ~
@@ -78,10 +77,10 @@ local M = {}
 --- Default configuration options for overlook.nvim.
 ---
 --- These options control the appearance, behavior, and positioning of floating
---- popups, as well as adapter-specific settings. Users can override any of these
---- values by passing a configuration table to |require("overlook").setup()|.
+--- popups. Users can override any of these values by passing a configuration
+--- table to |require("overlook").setup()|.
 ---
----@seealso |overlook-config.setup()|
+---@seealso |overlook-setup|
 ---
 ---@type OverlookOptions
 ---@eval return require("mini.doc").afterlines_to_code(MiniDoc.current.eval_section)

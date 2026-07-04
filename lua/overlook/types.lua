@@ -1,14 +1,39 @@
+--- Writing a custom peek source
+---
+--- A "peek source" is just a function. It gathers some context (the cursor, a
+--- mark, an LSP result, ...), builds an |OverlookPopupOptions| table, and hands
+--- it to `require("overlook.window").open_popup(opts)`. It opens nothing (and
+--- usually notifies) when there is nothing to peek. There is no registration
+--- step and no central adapter table: you bind the function to a key like any
+--- built-in.
+---
+--- The built-in sources under `overlook.peek.*` (cursor, marks, definition) are
+--- the canonical examples. A minimal synchronous source:
+--- >lua
+---   local function peek_alternate_file()
+---     local alt = vim.fn.bufnr("#") -- the alternate buffer
+---     if alt == -1 then
+---       vim.notify("Overlook: no alternate buffer", vim.log.levels.WARN)
+---       return -- open nothing when there's nothing to peek
+---     end
+---     require("overlook.window").open_popup({
+---       target_bufnr = alt,
+---       lnum = 1,
+---       col = 1,
+---       title = vim.fn.bufname(alt),
+---     })
+---   end
+---
+---   vim.keymap.set("n", "<leader>pa", peek_alternate_file, { desc = "Peek alternate file" })
+--- <
+--- Asynchronous sources (e.g. `vim.lsp.buf.*`) call open_popup later from their
+--- own callback; see `overlook.peek.definition` for an async example.
+---@tag overlook-peek
+
 ---@class OverlookPopupOptions
 ---@field target_bufnr integer The buffer number to display in the popup.
----@field lnum integer The line number to position the popup.
----@field col integer The column number to position the popup.
+---@field lnum integer The line number (1-based) to position the popup at.
+---@field col integer The column (1-based) to position the popup at.
 ---@field title? string Optional title for the popup.
 
---- A peek source is just a function. It gathers some context (the cursor, a
---- mark, an LSP result, ...), builds OverlookPopupOptions, and hands them to
---- `require("overlook.window").open_popup(opts)`. It opens nothing (and
---- typically notifies) when there is nothing to peek. Async sources (e.g.
---- vim.lsp.buf.*) simply call open_popup later from their own callback. The
---- built-in sources live under `overlook.peek.*`; a custom source is any
---- function following the same shape, bound to a key.
----@alias OverlookPeekSource fun(...): nil
+---@alias OverlookPeekSource fun(...): nil A function that builds OverlookPopupOptions and calls overlook.window.open_popup.

@@ -8,6 +8,8 @@ doc.generate({ "lua/overlook/api.lua" }, "doc/overlook-api.txt")
 
 doc.generate({ "lua/overlook/config.lua" }, "doc/overlook-config.txt")
 
+doc.generate({ "lua/overlook/types.lua" }, "doc/overlook-peek.txt")
+
 -- -- Generate combined documentation
 -- print("Generating combined documentation...")
 -- doc.generate(
