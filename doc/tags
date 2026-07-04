@@ -16,4 +16,5 @@ overlook-api.switch_focus	overlook-api.txt	/*overlook-api.switch_focus*
 overlook-config	overlook-config.txt	/*overlook-config*
 overlook-config.defaults	overlook-config.txt	/*overlook-config.defaults*
 overlook-config.get	overlook-config.txt	/*overlook-config.get*
+overlook-peek	overlook-peek.txt	/*overlook-peek*
 overlook-setup	overlook-setup.txt	/*overlook-setup*

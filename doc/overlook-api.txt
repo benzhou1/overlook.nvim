@@ -12,9 +12,10 @@ plugin through key mappings and commands.
 Table of contents
   Peek Functions ...........................................................
   ............................................. |overlook-api.peek_definition|
-  ................................................ |overlook-api.switch_focus|
   ................................................. |overlook-api.peek_cursor|
   ................................................... |overlook-api.peek_mark|
+  Focus Functions ..........................................................
+  ................................................ |overlook-api.switch_focus|
   Stack Management Functions ...............................................
   .......................................... |overlook-api.restore_all_popups|
   ............................................... |overlook-api.restore_popup|
@@ -44,15 +45,6 @@ appropriate notification to the user.
 Usage ~
 >lua
   vim.keymap.set("n", "<leader>pd", require("overlook.api").peek_definition)
-<
-------------------------------------------------------------------------------
-                                                     *overlook-api.switch_focus*
-                               `M.switch_focus`()
-Switch focus between the top popup and the root window.
-
-Usage ~
->lua
-  vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
 <
 ------------------------------------------------------------------------------
                                                       *overlook-api.peek_cursor*
@@ -85,6 +77,18 @@ Shows an error notification if the input is invalid or empty.
 Usage ~
 >lua
   vim.keymap.set("n", "<leader>pm", require("overlook.api").peek_mark)
+<
+------------------------------------------------------------------------------
+Focus Functions
+
+------------------------------------------------------------------------------
+                                                     *overlook-api.switch_focus*
+                               `M.switch_focus`()
+Switch focus between the top popup and the root window.
+
+Usage ~
+>lua
+  vim.keymap.set("n", "<leader>pf", require("overlook.api").switch_focus)
 <
 ------------------------------------------------------------------------------
 Stack Management Functions
