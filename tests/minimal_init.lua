@@ -4,9 +4,11 @@ vim.opt.runtimepath:prepend(".")
 vim.opt.compatible = false
 vim.opt.termguicolors = true
 
--- E325 (swapfile ATTENTION) blocks `nvim --headless` until a key is pressed.
--- Plenary runs spec files in parallel child processes, and peek tests bufload
--- real paths; a shared swapfile makes that race hang the run.
+-- Plenary runs spec files as parallel headless Nvim processes. Two failures
+-- come from that: E325 (swapfile ATTENTION) hangs a run when peek tests
+-- bufload a shared path, and on nightly the first edit races to mkdir
+-- stdpath("state") .. "/swap" and the loser raises E303. Tests do not use
+-- swap files.
 vim.opt.swapfile = false
 
 vim.cmd.runtime { "plugin/plenary.vim", bang = true }
