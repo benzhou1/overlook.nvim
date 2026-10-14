@@ -84,6 +84,61 @@ M.peek_mark = function()
   end)
 end
 
+--- Peek at an explicit location.
+---
+--- Opens a popup for one LSP location, location link, or quickfix entry — the
+--- same `items` entries `vim.lsp.buf.definition({ on_list = ... })` (and the
+--- other location methods) hand to a picker. `uri` / `targetUri` are resolved
+--- with |vim.uri_to_bufnr()|; `filename` and `bufnr` are accepted as well.
+--- `lnum`/`col` are 1-based quickfix coordinates. An LSP `range` (or
+--- `targetSelectionRange` / `targetRange`) is 0-based and used when `lnum`
+--- is absent. See |OverlookPeekItem| for every accepted field.
+---
+--- Nothing is opened when the item does not identify a buffer and a position:
+--- a warning is shown and the call returns nil. Existing peeks
+--- (`peek_definition`, `peek_cursor`, `peek_mark`) are unchanged.
+---
+--- From an LSP `on_list` callback, peek the entry you chose:
+--- >lua
+---   vim.lsp.buf.definition({
+---     on_list = function(opts)
+---       vim.ui.select(opts.items, {
+---         prompt = opts.title or "Peek definition",
+---         format_item = function(item)
+---           return string.format("%s:%s:%s", item.filename or "", item.lnum or "", item.col or "")
+---         end,
+---       }, function(item)
+---         if item then
+---           require("overlook.api").peek(item)
+---         end
+---       end)
+---     end,
+---   })
+--- <
+---
+--- A location you already have, with no LSP request:
+--- >lua
+---   require("overlook.api").peek({
+---     filename = "lua/overlook/api.lua",
+---     lnum = 1,
+---     col = 1,
+---   })
+--- <
+---@param item OverlookPeekItem|nil Location, location link, or quickfix entry.
+---@return OverlookPopup|nil The opened popup, or nil when the item was rejected.
+---@usage >lua
+---   vim.lsp.buf.definition({
+---     on_list = function(opts)
+---       require("overlook.api").peek(opts.items[1])
+---     end,
+---   })
+--- <
+---@tag overlook-api.peek
+---@toc_entry
+M.peek = function(item)
+  return require("overlook.peek.location")(item)
+end
+
 ---@toc_entry Focus Functions
 ---@text Focus Functions
 

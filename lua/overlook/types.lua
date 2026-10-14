@@ -28,6 +28,18 @@
 --- <
 --- Asynchronous sources (e.g. `vim.lsp.buf.*`) call open_popup later from their
 --- own callback; see `overlook.peek.definition` for an async example.
+---
+--- When you already have an LSP location or a quickfix entry (for example the
+--- `items` passed to `vim.lsp.buf.definition({ on_list = ... })`), you do not
+--- have to build |OverlookPopupOptions| yourself. Pass the item to
+--- |overlook-api.peek|:
+--- >lua
+---   require("overlook.api").peek({
+---     filename = "lua/overlook/init.lua",
+---     lnum = 1,
+---     col = 1,
+---   })
+--- <
 ---@tag overlook-peek
 
 ---@class OverlookPopupOptions
@@ -35,5 +47,28 @@
 ---@field lnum integer The line number (1-based) to position the popup at.
 ---@field col integer The column (1-based) to position the popup at.
 ---@field title? string Optional title for the popup.
+
+--- One location accepted by |overlook-api.peek|.
+---
+--- Identify the buffer with a document URI, a filename, or a buffer number.
+--- URI is tried first (`uri` / `targetUri`, including the same fields on
+--- `user_data`, where |vim.lsp.util.locations_to_items()| stores the original
+--- location), then a non-zero `bufnr`, then `filename`. Position is `lnum` /
+--- `col` (1-based, quickfix) when `lnum` is set; otherwise an LSP range
+--- (`range`, `targetSelectionRange`, or `targetRange`; 0-based).
+---
+--- *OverlookPeekItem*
+---@class OverlookPeekItem
+---@field uri? string Document URI (`file:///...`), resolved with |vim.uri_to_bufnr()|.
+---@field targetUri? string Location-link target URI. Used when `uri` is absent.
+---@field filename? string Filesystem path. Used when no URI resolves and `bufnr` is unset.
+---@field bufnr? integer Buffer number. Used when it is > 0 and no URI resolves.
+---@field lnum? integer 1-based line (quickfix). Preferred over `range` when set.
+---@field col? integer 1-based column (quickfix). Defaults to 1.
+---@field range? table LSP range. `start.line` and `start.character` are 0-based.
+---@field targetSelectionRange? table Location-link selection range (0-based). Preferred over `targetRange`.
+---@field targetRange? table Location-link range (0-based). Used when no selection range is set.
+---@field user_data? table Original LSP location, as set by |vim.lsp.util.locations_to_items()|.
+---@field title? string Popup title. Defaults to the buffer's path.
 
 ---@alias OverlookPeekSource fun(...): nil A function that builds OverlookPopupOptions and calls overlook.window.open_popup.

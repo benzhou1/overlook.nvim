@@ -1,12 +1,14 @@
 OverlookBorderStyle	overlook-config.txt	/*OverlookBorderStyle*
 OverlookOptions	overlook-config.txt	/*OverlookOptions*
 OverlookOptions.UI	overlook-config.txt	/*OverlookOptions.UI*
+OverlookPeekItem	overlook-peek.txt	/*OverlookPeekItem*
 overlook-api	overlook-api.txt	/*overlook-api*
 overlook-api.close_all	overlook-api.txt	/*overlook-api.close_all*
 overlook-api.open_in_original_window	overlook-api.txt	/*overlook-api.open_in_original_window*
 overlook-api.open_in_split	overlook-api.txt	/*overlook-api.open_in_split*
 overlook-api.open_in_tab	overlook-api.txt	/*overlook-api.open_in_tab*
 overlook-api.open_in_vsplit	overlook-api.txt	/*overlook-api.open_in_vsplit*
+overlook-api.peek	overlook-api.txt	/*overlook-api.peek*
 overlook-api.peek_cursor	overlook-api.txt	/*overlook-api.peek_cursor*
 overlook-api.peek_definition	overlook-api.txt	/*overlook-api.peek_definition*
 overlook-api.peek_mark	overlook-api.txt	/*overlook-api.peek_mark*
