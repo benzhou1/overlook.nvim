@@ -40,6 +40,23 @@
 ---     col = 1,
 ---   })
 --- <
+---
+--- LSP location lists share `overlook.peek.location`. One item opens a popup
+--- immediately. Several items follow |OverlookOnMultiple|. Definition uses the
+--- helper. `require("overlook.peek.definition")(location_opts)` forwards
+--- `location_opts` to `vim.lsp.buf.definition`, but a caller-supplied `on_list`
+--- is ignored and replaced with Overlook's handler. A references or
+--- implementation source can call the helper from its own `on_list`:
+--- >lua
+---   vim.lsp.buf.references(nil, {
+---     on_list = function(result)
+---       require("overlook.peek.location").open(result.items, {
+---         empty_message = "Overlook: No references found.",
+---         prompt = "Overlook: Select reference",
+---       })
+---     end,
+---   })
+--- <
 ---@tag overlook-peek
 
 ---@class OverlookPopupOptions

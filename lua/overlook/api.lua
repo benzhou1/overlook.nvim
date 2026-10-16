@@ -26,6 +26,15 @@ local M = {}
 --- window's popup stack and can be navigated, edited, and stacked with
 --- additional popups.
 ---
+--- A single location opens directly. When the server returns several
+--- locations, |OverlookOnMultiple| (`on_multiple` in |overlook-config|)
+--- decides: `"first"` (the default) opens the first location, `"select"`
+--- prompts with `vim.ui.select`, and a function receives the list plus an opener.
+---
+--- `require("overlook.peek.definition")(location_opts)` forwards those options
+--- to `vim.lsp.buf.definition`. A caller-supplied `on_list` is ignored and
+--- replaced with Overlook's handler.
+---
 --- If no LSP server is attached or no definition is found, displays an
 --- appropriate notification to the user.
 ---
@@ -136,7 +145,7 @@ end
 ---@tag overlook-api.peek
 ---@toc_entry
 M.peek = function(item)
-  return require("overlook.peek.location")(item)
+  return require("overlook.peek.location").peek(item)
 end
 
 ---@toc_entry Focus Functions

@@ -49,6 +49,24 @@ local M = {}
 ---| "shadow"     Border with shadow effect
 ---| string[]     Custom border array as defined by nvim_open_win
 
+--- *OverlookOnMultiple*
+---
+--- What to do when an LSP peek returns more than one location. A single
+--- location always opens a popup directly and never prompts.
+---
+---@alias OverlookOnMultiple
+---| "first"  Open the first location without prompting. This is the default.
+---| "select" Prompt with vim.ui.select. Entries are "relative/path:line: text".
+---           The path is relative to the working directory. Line text is trimmed.
+---           Any vim.ui.select UI works, including telescope-ui-select and
+---           `require("fzf-lua").register_ui_select()`.
+---| fun(items: table[], open_fn: fun(item: table))
+---           Custom handler. `items` are quickfix-style LSP entries. Call
+---           `open_fn(item)` to open that location, or pass nil to open nothing.
+---
+--- Any other value warns at |overlook-setup|() and when a peek runs, then
+--- falls back to "first".
+
 --- *OverlookOptions.UI*
 ---
 ---@class OverlookOptions.UI
@@ -72,6 +90,7 @@ local M = {}
 ---@class OverlookOptions
 ---
 ---@field ui OverlookOptions.UI UI settings for the popup windows.
+---@field on_multiple OverlookOnMultiple Strategy when several LSP locations match: "first" (default), "select", or a function(items, open_fn). Unknown values warn and fall back to "first".
 ---@field on_stack_empty? fun() Optional function called when the last Overlook popup closes.
 
 --- Default configuration options for overlook.nvim.
@@ -127,6 +146,18 @@ local defaults = {
     },
   },
 
+  -- How to handle an LSP peek that returns more than one location.
+  -- A single location always opens directly and never prompts.
+  -- "first" (default) opens the first location, matching the previous behavior.
+  -- "select" calls vim.ui.select. Entries are formatted as
+  -- "relative/path:line: text". telescope-ui-select and
+  -- require("fzf-lua").register_ui_select() work by replacing vim.ui.select.
+  -- A function(items, open_fn) handles the list itself. Call open_fn(item)
+  -- to open that location in a popup, or open_fn(nil) to open nothing.
+  -- require("overlook.peek.location").format_item formats an entry the same way.
+  -- Any other value warns and falls back to "first".
+  on_multiple = "first",
+
   -- Optional hook called when the last Overlook popup closes
   on_stack_empty = nil,
 }
@@ -136,6 +167,11 @@ local defaults = {
 ---@private
 local options = vim.deepcopy(defaults)
 
+-- True for the accepted on_multiple values: "first", "select", or a function.
+local function on_multiple_is_valid(value)
+  return value == "first" or value == "select" or type(value) == "function"
+end
+
 ---@private
 ---@param user_opts? table User configuration options. Can contain any subset of OverlookOptions fields.
 function M.setup(user_opts)
@@ -144,8 +180,15 @@ function M.setup(user_opts)
     -- 'force' mode replaces arrays entirely if present, usually desired for config.
     options = vim.tbl_deep_extend("force", options, user_opts or {})
   end
-  -- You could add validation for option values here later if needed.
-  -- For example, ensure min_width is less than default_width.
+
+  -- vim.validate errors on a bad value. A typo should warn and keep the
+  -- previous peek behavior ("first") instead of aborting setup.
+  local value = options.on_multiple
+  local ok = pcall(vim.validate, "on_multiple", value, on_multiple_is_valid, false, '"first", "select", or a function')
+  if not ok then
+    vim.notify("Overlook: unknown on_multiple (" .. tostring(value) .. '); using "first".', vim.log.levels.WARN)
+    options.on_multiple = "first"
+  end
 end
 
 --- Get the current active configuration.

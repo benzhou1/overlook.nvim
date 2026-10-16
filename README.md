@@ -94,6 +94,20 @@ require("overlook").setup({
 })
 ```
 
+`peek_definition()` opens a popup immediately when the LSP returns one location. When it returns several, the default `"first"` opens the first location, which is the previous behavior. Opt into a prompt with `on_multiple = "select"`. Entries are formatted as `relative/path:line: text` and passed to `vim.ui.select`, so the default selector works with no extra plugins. UIs that replace `vim.ui.select` receive the same list, including [telescope-ui-select.nvim](https://github.com/nvim-telescope/telescope-ui-select.nvim) (`require("telescope").load_extension("ui-select")`) and [fzf-lua](https://github.com/ibhagwan/fzf-lua) (`require("fzf-lua").register_ui_select()`). A custom `function(items, open_fn)` can handle the list instead; call `open_fn(item)` to open that location in a popup.
+
+```lua
+require("overlook").setup({
+  on_multiple = "select",
+})
+
+-- Optional: either of these replaces the default vim.ui.select UI.
+require("telescope").load_extension("ui-select")
+require("fzf-lua").register_ui_select()
+```
+
+References and implementation can reuse the same helper (`overlook.peek.location`). See `:h OverlookOnMultiple`.
+
 The full, always-current list of options and their defaults lives in `:h overlook-config` - it is generated from the source annotations, so it can't drift out of sync.
 
 ## Usage
@@ -117,7 +131,7 @@ vim.keymap.set("n", "<leader>po", require("overlook.api").open_in_original_windo
 
 Check `:h overlook-api` for more details.
 
-- `peek_definition()` - Peek at the LSP definition under cursor
+- `peek_definition()` - Peek at the LSP definition under the cursor. One match opens a popup; several matches follow `on_multiple` (`"first"` by default, or `vim.ui.select` when set to `"select"`)
 - `peek_cursor()` - Create a popup at current cursor position
 - `peek_mark()` - Prompt for a mark and peek at its location
 - `peek(item)` - Peek at an LSP location, quickfix entry, or buffer you already have
@@ -190,7 +204,7 @@ end
 vim.keymap.set("n", "<leader>pa", peek_alternate_file, { desc = "Peek alternate file" })
 ```
 
-Async sources (LSP, pickers) work the same way - they just call `open_popup` later from their own callback. If the source already has an LSP location or a quickfix entry, `require("overlook.api").peek(item)` does the buffer lookup for you; see [Peek a specific location](#peek-a-specific-location). `:h overlook-peek` is the full contract, and `overlook.peek.*` holds the built-in examples.
+Async sources (LSP, pickers) work the same way - they just call `open_popup` later from their own callback. If the source already has an LSP location or a quickfix entry, `require("overlook.api").peek(item)` does the buffer lookup for you; see [Peek a specific location](#peek-a-specific-location). For an LSP location list, call `require("overlook.peek.location").open(items, opts)` from `on_list`: one item opens a popup, and several items follow `on_multiple`. `require("overlook.peek.definition")(location_opts)` forwards those options to `vim.lsp.buf.definition`, but a caller-supplied `on_list` is ignored and replaced with Overlook's handler. See `:h overlook-peek` for the full contract and `overlook.peek.*` for the built-in examples.
 
 ## Development
 

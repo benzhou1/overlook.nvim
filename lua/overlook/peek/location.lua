@@ -1,18 +1,21 @@
---- Open a popup at a caller-supplied location.
+--- Resolve an LSP location list into an Overlook popup.
 ---
---- Accepts one LSP Location, LocationLink, or quickfix entry (the `items`
---- shape `vim.lsp.buf.*({ on_list = ... })` passes through) and turns it
---- into OverlookPopupOptions. Resolution order for the buffer is:
----   1. a document URI (`uri` / `targetUri`, including under `user_data`)
----   2. a valid `bufnr` (quickfix uses bufnr when it is non-zero)
----   3. `filename`
---- A 1-based `lnum`/`col` wins over an LSP range, because quickfix entries
---- from |vim.lsp.util.locations_to_items()| already converted the position
---- to bytes. Raw ranges are 0-based; `character` is a UTF-16 code unit, the
---- LSP default when no client negotiated another encoding.
+--- Definition uses this helper. A references or implementation source can call
+--- `open` from its own `on_list` callback with a different empty message and
+--- prompt; see |overlook-peek|.
 ---
---- Returns nil (and notifies) when the item does not identify a buffer and a
---- position. Never raises: a bad URI or an unloadable path is a warning.
+--- One item opens immediately. Several items follow |OverlookOnMultiple|
+--- (`on_multiple` in |overlook-config|):
+--- - `"first"` (default) opens the first item.
+--- - `"select"` calls `vim.ui.select`. Entries are
+---   `relative/path:line: text` (path relative to the working directory, line
+---   text trimmed). A UI that replaces `vim.ui.select`, such as
+---   telescope-ui-select or `require("fzf-lua").register_ui_select()`, receives
+---   the same list.
+--- - a function is called as `on_multiple(items, open_fn)`. `open_fn(item)`
+---   opens that item through |overlook.window.open_popup|.
+--- - any other value warns and opens the first item.
+local M = {}
 
 ---@param value any
 ---@return string|nil
@@ -81,19 +84,21 @@ end
 ---@return integer|nil
 local function resolve_bufnr(item)
   local user_data = type(item.user_data) == "table" and item.user_data or nil
-  local uris = {
-    item.uri,
-    item.targetUri,
-    user_data and user_data.uri,
-    user_data and user_data.targetUri,
-  }
-  for _, uri in ipairs(uris) do
-    if nonempty_string(uri) then
-      local bufnr = bufnr_from_uri(uri)
-      if bufnr then
-        return bufnr
-      end
+  -- Do not put these in an array and walk it with ipairs: a missing top-level
+  -- uri is nil, and ipairs stops at that hole, so user_data.uri would never
+  -- be tried. locations_to_items() stores the URI only on user_data.
+  local function from_uri(uri)
+    if not nonempty_string(uri) then
+      return nil
     end
+    return bufnr_from_uri(uri)
+  end
+  local bufnr = from_uri(item.uri)
+    or from_uri(item.targetUri)
+    or from_uri(user_data and user_data.uri)
+    or from_uri(user_data and user_data.targetUri)
+  if bufnr then
+    return bufnr
   end
 
   -- Quickfix: a non-zero bufnr names the buffer; filename is the fallback.
@@ -179,7 +184,7 @@ end
 
 ---@param item OverlookPeekItem|nil
 ---@return OverlookPopup|nil
-return function(item)
+function M.peek(item)
   if type(item) ~= "table" then
     vim.notify("Overlook: invalid peek item.", vim.log.levels.WARN)
     return nil
@@ -204,3 +209,148 @@ return function(item)
     title = resolve_title(item, bufnr),
   }
 end
+
+---@class OverlookLocationOpenOpts
+---@field empty_message? string Notification (INFO) when `items` is empty.
+---@field no_uri_message? string Notification (WARN) when the chosen item has no URI.
+---@field prompt? string Prompt passed to `vim.ui.select`.
+---@field kind? string Kind hint passed to `vim.ui.select`.
+
+--- Format one quickfix-style LSP item for `vim.ui.select`.
+---
+--- Shape: `relative/path:line: text`. The path is relative to the working
+--- directory when the file is under it. Line text is trimmed.
+---@param item table
+---@return string
+function M.format_item(item)
+  if type(item) ~= "table" then
+    return ""
+  end
+
+  local filename = item.filename or ""
+  local relative = filename == "" and "" or vim.fn.fnamemodify(filename, ":.")
+  local lnum = tonumber(item.lnum) or 0
+  local text = type(item.text) == "string" and vim.trim(item.text) or ""
+  return string.format("%s:%d: %s", relative, lnum, text)
+end
+
+--- Open one LSP location item in a popup.
+---
+--- Delegates to `M.peek` (the implementation of |overlook-api.peek|) so a list
+--- entry uses the same URI, buffer, filename, and position rules as a direct
+--- peek. `M.peek` warns when the item does not resolve. `no_uri_message` is
+--- kept for callers that still pass one; it is not shown on top of that warning.
+---@param item table
+---@param no_uri_message? string
+---@return boolean opened
+function M.open_item(item, no_uri_message)
+  local _ = no_uri_message
+  return M.peek(item) ~= nil
+end
+
+--- Resolve `on_multiple`, warning when the configured value is not recognized.
+--- `nil` uses the default `"first"` so a partial config keeps the previous behavior.
+---@param value any
+---@return "select"|"first"|fun(items: table[], open_fn: fun(item: table))
+local function resolve_on_multiple(value)
+  if value == nil or value == "first" then
+    return "first"
+  end
+  if value == "select" or type(value) == "function" then
+    return value
+  end
+
+  vim.notify("Overlook: unknown on_multiple (" .. tostring(value) .. '); using "first".', vim.log.levels.WARN)
+  return "first"
+end
+
+--- Identity of a quickfix-style LSP item: URI when present, otherwise filename,
+--- plus the 1-based line and column. `textDocument/definition` concatenates
+--- every client's results, so two servers on one buffer repeat the same spot.
+---@param item table
+---@return string?
+local function location_identity(item)
+  if type(item) ~= "table" then
+    return nil
+  end
+  local user_data = type(item.user_data) == "table" and item.user_data or {}
+  local uri = user_data.targetUri or user_data.uri
+  local where = (type(uri) == "string" and uri ~= "") and uri or (item.filename or "")
+  return table.concat({ where, tostring(tonumber(item.lnum) or 0), tostring(tonumber(item.col) or 0) }, "\0")
+end
+
+--- Drop later items that name the same location. The first occurrence stays,
+--- so the original order is preserved.
+---@param items table[]
+---@return table[]
+local function dedupe_items(items)
+  local seen = {}
+  local unique = {}
+  for _, item in ipairs(items) do
+    local key = location_identity(item)
+    if key == nil or not seen[key] then
+      if key ~= nil then
+        seen[key] = true
+      end
+      unique[#unique + 1] = item
+    end
+  end
+  return unique
+end
+
+--- Open a popup for an LSP location list.
+---
+--- - Zero items: notify `empty_message` and return.
+--- - One item: open it directly, with no prompt.
+--- - Several items: follow |OverlookOnMultiple|.
+---
+--- Items that share a URI (or filename, when there is no URI), line, and
+--- column are collapsed to the first one before that decision.
+---
+--- Cancelling `vim.ui.select` (or calling `open_fn` with `nil`) opens nothing.
+---@param items? table[] Quickfix-style items from an LSP `on_list` callback.
+---@param opts? OverlookLocationOpenOpts
+---@return nil
+function M.open(items, opts)
+  opts = opts or {}
+  if type(items) ~= "table" or #items == 0 then
+    vim.notify(opts.empty_message or "Overlook: No location found.", vim.log.levels.INFO)
+    return
+  end
+
+  items = dedupe_items(items)
+
+  if #items == 1 then
+    M.open_item(items[1], opts.no_uri_message)
+    return
+  end
+
+  local on_multiple = resolve_on_multiple(require("overlook.config").get().on_multiple)
+
+  local function open_chosen(item)
+    if item == nil then
+      return
+    end
+    M.open_item(item, opts.no_uri_message)
+  end
+
+  if on_multiple == "first" then
+    open_chosen(items[1])
+    return
+  end
+
+  if type(on_multiple) == "function" then
+    on_multiple(items, open_chosen)
+    return
+  end
+
+  vim.ui.select(items, {
+    prompt = opts.prompt or "Overlook: Select location",
+    format_item = M.format_item,
+    kind = opts.kind or "overlook.location",
+  }, function(choice)
+    open_chosen(choice)
+  end)
+end
+
+return M
