@@ -23,17 +23,26 @@ describe("overlook.peek.definition", function()
   end
 
   -- Real files: list opening goes through M.peek, which rejects a URI whose
-  -- file is not readable. Titles are the buffer name shortened with ":~:.".
+  -- file is not readable. The file is reached through a symlink so the path
+  -- on the item differs from the buffer name. Neovim resolves that symlink
+  -- when it loads the buffer (/var -> /private/var on macOS is the same case).
   local function temp_source(name, nlines)
-    local dir = vim.fn.tempname()
-    local path = dir .. "/" .. name
+    local real_dir = vim.fn.tempname()
+    vim.fn.mkdir(real_dir, "p")
+    local link = vim.fn.tempname()
+    local linked, err = vim.uv.fs_symlink(real_dir, link)
+    if not linked then
+      error("temp symlink failed: " .. tostring(err))
+    end
+    local path = link .. "/" .. name
     vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
     local lines = {}
     for i = 1, nlines or 20 do
       lines[i] = "line " .. i
     end
     vim.fn.writefile(lines, path)
-    table.insert(created_dirs, dir)
+    table.insert(created_dirs, link)
+    table.insert(created_dirs, real_dir)
     return path, vim.uri_from_fname(path)
   end
 
@@ -67,8 +76,9 @@ describe("overlook.peek.definition", function()
     return first, second
   end
 
+  -- Title is the buffer name (`:~:.`), which is the resolved path.
   local function popup_title(path)
-    return vim.fn.fnamemodify(path, ":~:.")
+    return vim.fn.fnamemodify(vim.fn.resolve(path), ":~:.")
   end
 
   before_each(function()
