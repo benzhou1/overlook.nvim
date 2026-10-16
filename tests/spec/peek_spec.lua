@@ -136,6 +136,24 @@ describe("overlook.api.peek", function()
     assert.are.equal(0, #notify_calls)
   end)
 
+  it("prefers user_data.uri over a different filename", function()
+    local uri_path = write_temp { "from-uri" }
+    local other = write_temp { "from-filename" }
+    local uri = vim.uri_from_fname(uri_path)
+
+    local popup = api_mod.peek {
+      filename = other,
+      lnum = 1,
+      col = 1,
+      user_data = { uri = uri },
+    }
+
+    assert.is_not_nil(popup)
+    assert.are.equal(vim.uri_to_bufnr(uri), popup.opts.target_bufnr)
+    assert.are.same({ "from-uri" }, vim.api.nvim_buf_get_lines(popup.opts.target_bufnr, 0, -1, false))
+    assert.are.equal(0, #notify_calls)
+  end)
+
   it("handles an invalid item gracefully", function()
     local window = require("overlook.window").current()
     local before = window:size()

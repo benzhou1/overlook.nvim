@@ -84,19 +84,21 @@ end
 ---@return integer|nil
 local function resolve_bufnr(item)
   local user_data = type(item.user_data) == "table" and item.user_data or nil
-  local uris = {
-    item.uri,
-    item.targetUri,
-    user_data and user_data.uri,
-    user_data and user_data.targetUri,
-  }
-  for _, uri in ipairs(uris) do
-    if nonempty_string(uri) then
-      local bufnr = bufnr_from_uri(uri)
-      if bufnr then
-        return bufnr
-      end
+  -- Do not put these in an array and walk it with ipairs: a missing top-level
+  -- uri is nil, and ipairs stops at that hole, so user_data.uri would never
+  -- be tried. locations_to_items() stores the URI only on user_data.
+  local function from_uri(uri)
+    if not nonempty_string(uri) then
+      return nil
     end
+    return bufnr_from_uri(uri)
+  end
+  local bufnr = from_uri(item.uri)
+    or from_uri(item.targetUri)
+    or from_uri(user_data and user_data.uri)
+    or from_uri(user_data and user_data.targetUri)
+  if bufnr then
+    return bufnr
   end
 
   -- Quickfix: a non-zero bufnr names the buffer; filename is the fallback.
@@ -180,7 +182,6 @@ local function resolve_title(item, bufnr)
   return "Overlook"
 end
 
-
 ---@param item OverlookPeekItem|nil
 ---@return OverlookPopup|nil
 function M.peek(item)
@@ -209,7 +210,6 @@ function M.peek(item)
   }
 end
 
-
 ---@class OverlookLocationOpenOpts
 ---@field empty_message? string Notification (INFO) when `items` is empty.
 ---@field no_uri_message? string Notification (WARN) when the chosen item has no URI.
@@ -236,31 +236,16 @@ end
 
 --- Open one LSP location item in a popup.
 ---
---- The URI is read from `user_data.targetUri` (LocationLink) or
---- `user_data.uri` (Location), which is where Neovim stores the original LSP
---- location on a quickfix item.
+--- Delegates to `M.peek` (the implementation of |overlook-api.peek|) so a list
+--- entry uses the same URI, buffer, filename, and position rules as a direct
+--- peek. `M.peek` warns when the item does not resolve. `no_uri_message` is
+--- kept for callers that still pass one; it is not shown on top of that warning.
 ---@param item table
 ---@param no_uri_message? string
 ---@return boolean opened
 function M.open_item(item, no_uri_message)
-  if type(item) ~= "table" then
-    return false
-  end
-
-  local user_data = item.user_data
-  local uri = type(user_data) == "table" and (user_data.targetUri or user_data.uri) or nil
-  if not uri then
-    vim.notify(no_uri_message or "Overlook: No URI found in LSP location item.", vim.log.levels.WARN)
-    return false
-  end
-
-  require("overlook.window").open_popup {
-    target_bufnr = vim.uri_to_bufnr(uri),
-    lnum = item.lnum,
-    col = item.col,
-    title = item.filename,
-  }
-  return true
+  local _ = no_uri_message
+  return M.peek(item) ~= nil
 end
 
 --- Resolve `on_multiple`, warning when the configured value is not recognized.

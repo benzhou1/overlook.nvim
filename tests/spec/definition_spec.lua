@@ -4,6 +4,7 @@ describe("overlook.peek.definition", function()
   local notify_calls
   local select_calls
   local seen_uris
+  local created_dirs
   local on_multiple
   local original_notify
   local original_lsp_definition
@@ -17,27 +18,57 @@ describe("overlook.peek.definition", function()
       col = 1,
       filename = "target.lua",
       text = "return target",
-      user_data = { uri = "file:///tmp/target.lua" },
+      user_data = {},
     }, overrides or {})
   end
 
+  -- Real files: list opening goes through M.peek, which rejects a URI whose
+  -- file is not readable. Titles are the buffer name shortened with ":~:.".
+  local function temp_source(name, nlines)
+    local dir = vim.fn.tempname()
+    local path = dir .. "/" .. name
+    vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+    local lines = {}
+    for i = 1, nlines or 20 do
+      lines[i] = "line " .. i
+    end
+    vim.fn.writefile(lines, path)
+    table.insert(created_dirs, dir)
+    return path, vim.uri_from_fname(path)
+  end
+
+  local function one_definition()
+    local path, uri = temp_source("target.lua", 12)
+    return {
+      lnum = 12,
+      col = 7,
+      filename = path,
+      user_data = { uri = uri },
+    }, uri
+  end
+
   local function two_definitions()
-    local cwd = vim.fn.getcwd()
+    local cpp, cpp_uri = temp_source("src/widget.cpp", 12)
+    local header, header_uri = temp_source("src/widget.h", 8)
     local first = lsp_item {
-      filename = cwd .. "/src/widget.cpp",
+      filename = cpp,
       lnum = 10,
       col = 3,
       text = "  void Widget::draw()",
-      user_data = { uri = "file:///src/widget.cpp" },
+      user_data = { uri = cpp_uri },
     }
     local second = lsp_item {
-      filename = cwd .. "/src/widget.h",
+      filename = header,
       lnum = 4,
       col = 8,
       text = "void Widget::draw();",
-      user_data = { targetUri = "file:///src/widget.h" },
+      user_data = { targetUri = header_uri },
     }
     return first, second
+  end
+
+  local function popup_title(path)
+    return vim.fn.fnamemodify(path, ":~:.")
   end
 
   before_each(function()
@@ -45,6 +76,7 @@ describe("overlook.peek.definition", function()
     notify_calls = {}
     select_calls = {}
     seen_uris = {}
+    created_dirs = {}
     on_multiple = "first"
 
     package.loaded["overlook.window"] = {
@@ -74,7 +106,7 @@ describe("overlook.peek.definition", function()
     original_uri_to_bufnr = vim.uri_to_bufnr
     vim.uri_to_bufnr = function(uri)
       table.insert(seen_uris, uri)
-      return 4242 -- sentinel so we can assert the mapped buffer
+      return original_uri_to_bufnr(uri)
     end
 
     package.loaded["overlook.peek.location"] = nil
@@ -91,16 +123,16 @@ describe("overlook.peek.definition", function()
     package.loaded["overlook.window"] = nil
     package.loaded["overlook.peek.location"] = nil
     package.loaded["overlook.peek.definition"] = nil
+    for _, dir in ipairs(created_dirs) do
+      vim.fn.delete(dir, "rf")
+    end
   end)
 
   it("opens a popup directly when there is a single result and on_multiple is select", function()
     on_multiple = "select"
+    local item, uri = one_definition()
     vim.lsp.buf.definition = function(o)
-      o.on_list {
-        items = {
-          { lnum = 12, col = 7, filename = "target.lua", user_data = { uri = "file:///tmp/target.lua" } },
-        },
-      }
+      o.on_list { items = { item } }
     end
 
     definition()
@@ -108,11 +140,11 @@ describe("overlook.peek.definition", function()
     assert.are.equal(0, #select_calls)
     assert.are.equal(1, #open_popup_calls)
     local o = open_popup_calls[1]
-    assert.are.equal(4242, o.target_bufnr)
+    assert.are.equal(original_uri_to_bufnr(uri), o.target_bufnr)
     assert.are.equal(12, o.lnum)
     assert.are.equal(7, o.col)
-    assert.are.equal("target.lua", o.title)
-    assert.are.equal("file:///tmp/target.lua", seen_uris[1])
+    assert.are.equal(popup_title(item.filename), o.title)
+    assert.are.equal(uri, seen_uris[1])
     assert.are.equal(0, #notify_calls)
   end)
 
@@ -121,12 +153,9 @@ describe("overlook.peek.definition", function()
     on_multiple = function()
       called = true
     end
+    local item = one_definition()
     vim.lsp.buf.definition = function(o)
-      o.on_list {
-        items = {
-          { lnum = 12, col = 7, filename = "target.lua", user_data = { uri = "file:///tmp/target.lua" } },
-        },
-      }
+      o.on_list { items = { item } }
     end
 
     definition()
@@ -135,17 +164,14 @@ describe("overlook.peek.definition", function()
     assert.are.equal(0, #select_calls)
     assert.are.equal(1, #open_popup_calls)
     assert.are.equal(12, open_popup_calls[1].lnum)
-    assert.are.equal("target.lua", open_popup_calls[1].title)
+    assert.are.equal(popup_title(item.filename), open_popup_calls[1].title)
     assert.are.equal(0, #notify_calls)
   end)
 
   it("opens a popup directly when there is a single result", function()
+    local item, uri = one_definition()
     vim.lsp.buf.definition = function(o)
-      o.on_list {
-        items = {
-          { lnum = 12, col = 7, filename = "target.lua", user_data = { uri = "file:///tmp/target.lua" } },
-        },
-      }
+      o.on_list { items = { item } }
     end
 
     definition()
@@ -153,11 +179,11 @@ describe("overlook.peek.definition", function()
     assert.are.equal(0, #select_calls)
     assert.are.equal(1, #open_popup_calls)
     local o = open_popup_calls[1]
-    assert.are.equal(4242, o.target_bufnr)
+    assert.are.equal(original_uri_to_bufnr(uri), o.target_bufnr)
     assert.are.equal(12, o.lnum)
     assert.are.equal(7, o.col)
-    assert.are.equal("target.lua", o.title)
-    assert.are.equal("file:///tmp/target.lua", seen_uris[1])
+    assert.are.equal(popup_title(item.filename), o.title)
+    assert.are.equal(uri, seen_uris[1])
     assert.are.equal(0, #notify_calls)
   end)
 
@@ -179,18 +205,24 @@ describe("overlook.peek.definition", function()
     assert.are.equal(second, call.items[2])
     assert.are.equal("Overlook: Select definition", call.opts.prompt)
     assert.are.equal("overlook.definition", call.opts.kind)
-    assert.are.equal("src/widget.cpp:10: void Widget::draw()", call.opts.format_item(first))
-    assert.are.equal("src/widget.h:4: void Widget::draw();", call.opts.format_item(second))
+    assert.are.equal(
+      vim.fn.fnamemodify(first.filename, ":.") .. ":10: void Widget::draw()",
+      call.opts.format_item(first)
+    )
+    assert.are.equal(
+      vim.fn.fnamemodify(second.filename, ":.") .. ":4: void Widget::draw();",
+      call.opts.format_item(second)
+    )
 
     call.on_choice(second)
 
     assert.are.equal(1, #open_popup_calls)
     local o = open_popup_calls[1]
-    assert.are.equal(4242, o.target_bufnr)
+    assert.are.equal(original_uri_to_bufnr(second.user_data.targetUri), o.target_bufnr)
     assert.are.equal(4, o.lnum)
     assert.are.equal(8, o.col)
-    assert.are.equal(second.filename, o.title)
-    assert.are.equal("file:///src/widget.h", seen_uris[1])
+    assert.are.equal(popup_title(second.filename), o.title)
+    assert.are.equal(second.user_data.targetUri, seen_uris[1])
   end)
 
   it("opens nothing when vim.ui.select is cancelled", function()
@@ -219,8 +251,8 @@ describe("overlook.peek.definition", function()
     assert.are.equal(1, #open_popup_calls)
     assert.are.equal(10, open_popup_calls[1].lnum)
     assert.are.equal(3, open_popup_calls[1].col)
-    assert.are.equal(first.filename, open_popup_calls[1].title)
-    assert.are.equal("file:///src/widget.cpp", seen_uris[1])
+    assert.are.equal(popup_title(first.filename), open_popup_calls[1].title)
+    assert.are.equal(first.user_data.uri, seen_uris[1])
     assert.are.equal(0, #notify_calls)
   end)
 
@@ -235,7 +267,7 @@ describe("overlook.peek.definition", function()
 
     assert.are.equal(0, #select_calls)
     assert.are.equal(1, #open_popup_calls)
-    assert.are.equal(first.filename, open_popup_calls[1].title)
+    assert.are.equal(popup_title(first.filename), open_popup_calls[1].title)
   end)
 
   it("calls a custom on_multiple function with the items and an opener", function()
@@ -257,7 +289,7 @@ describe("overlook.peek.definition", function()
     assert.are.equal("function", type(seen.open_fn))
     assert.are.equal(1, #open_popup_calls)
     assert.are.equal(4, open_popup_calls[1].lnum)
-    assert.are.equal("file:///src/widget.h", seen_uris[1])
+    assert.are.equal(second.user_data.targetUri, seen_uris[1])
     assert.are.equal(0, #notify_calls)
   end)
 
@@ -291,7 +323,7 @@ describe("overlook.peek.definition", function()
     assert.are.equal(vim.log.levels.WARN, notify_calls[1].level)
     assert.are.equal(0, #select_calls)
     assert.are.equal(1, #open_popup_calls)
-    assert.are.equal(first.filename, open_popup_calls[1].title)
+    assert.are.equal(popup_title(first.filename), open_popup_calls[1].title)
     assert.are.equal(10, open_popup_calls[1].lnum)
   end)
 
@@ -323,12 +355,13 @@ describe("overlook.peek.definition", function()
 
   it("opens one popup when duplicate locations share uri, line, and column", function()
     on_multiple = "select"
+    local path, uri = temp_source("lib.lua", 4)
     local item = lsp_item {
-      filename = "/tmp/dup-repro/lib.lua",
+      filename = path,
       lnum = 3,
       col = 12,
       text = "function M.widget()",
-      user_data = { uri = "file:///tmp/dup-repro/lib.lua" },
+      user_data = { uri = uri },
     }
     vim.lsp.buf.definition = function(o)
       o.on_list { items = { item, vim.deepcopy(item) } }
@@ -340,7 +373,7 @@ describe("overlook.peek.definition", function()
     assert.are.equal(1, #open_popup_calls)
     assert.are.equal(3, open_popup_calls[1].lnum)
     assert.are.equal(12, open_popup_calls[1].col)
-    assert.are.equal(item.filename, open_popup_calls[1].title)
+    assert.are.equal(popup_title(item.filename), open_popup_calls[1].title)
     assert.are.equal(0, #notify_calls)
   end)
 
@@ -406,9 +439,9 @@ describe("overlook.peek.definition", function()
     assert.are.equal(vim.log.levels.INFO, notify_calls[1].level)
   end)
 
-  it("notifies WARN and does not open when the item has no URI", function()
+  it("notifies WARN and does not open when the item has no resolvable buffer", function()
     vim.lsp.buf.definition = function(o)
-      o.on_list { items = { { lnum = 1, col = 1, filename = "x", user_data = {} } } }
+      o.on_list { items = { { lnum = 1, col = 1, filename = "/no/such/overlook/missing.lua", user_data = {} } } }
     end
 
     local ok = pcall(definition)
@@ -416,7 +449,7 @@ describe("overlook.peek.definition", function()
     assert.is_true(ok)
     assert.are.equal(0, #open_popup_calls)
     assert.are.equal(1, #notify_calls)
-    assert.matches("No URI", notify_calls[1].msg)
+    assert.matches("could not resolve a buffer", notify_calls[1].msg)
     assert.are.equal(vim.log.levels.WARN, notify_calls[1].level)
   end)
 end)
