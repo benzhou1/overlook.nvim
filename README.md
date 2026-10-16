@@ -44,7 +44,7 @@ The core philosophy is simple: **popups are buffers**. Everything else follows f
 ## Requirements
 
 - Neovim >= 0.11 (CI tests against 0.11.x and nightly)
-- An LSP client only for `peek_definition()` - `peek_cursor()` and `peek_mark()` need nothing extra
+- An LSP client only for `peek_definition()` - `peek()`, `peek_cursor()`, and `peek_mark()` need nothing extra
 - No external dependencies
 
 ## Installation
@@ -120,6 +120,7 @@ Check `:h overlook-api` for more details.
 - `peek_definition()` - Peek at the LSP definition under cursor
 - `peek_cursor()` - Create a popup at current cursor position
 - `peek_mark()` - Prompt for a mark and peek at its location
+- `peek(item)` - Peek at an LSP location, quickfix entry, or buffer you already have
 - `restore_popup()` - Restore the last closed popup
 - `restore_all_popups()` - Restore all closed popups
 - `close_all()` - Close all overlook popups
@@ -128,6 +129,45 @@ Check `:h overlook-api` for more details.
 - `open_in_vsplit()` - Promote popup to vertical split
 - `open_in_tab()` - Promote popup to new tab
 - `open_in_original_window()` - Replace current window with popup content
+
+### Peek a specific location
+
+`peek(item)` opens a popup at a location you already have. Call it from an LSP `on_list` callback when you want to pick the result yourself, or from any picker. The item may be:
+
+- a quickfix entry (`filename` or `bufnr`, plus `lnum` / `col`) — the shape `vim.lsp.buf.definition({ on_list = ... })` puts in `opts.items`. The original LSP location, when present, is read from `user_data`
+- an LSP location (`uri` + `range`) or location link (`targetUri` + `targetSelectionRange`)
+- a buffer number (`bufnr` + `lnum` / `col`)
+
+A `uri` is resolved with `vim.uri_to_bufnr`. `lnum` / `col` are 1-based. An LSP `range` is 0-based and is used only when `lnum` is absent. An item that does not identify a buffer and a position notifies and opens nothing.
+
+```lua
+-- Pick one LSP definition, then peek it.
+vim.lsp.buf.definition({
+  on_list = function(opts)
+    vim.ui.select(opts.items, {
+      prompt = opts.title or "Peek definition",
+      format_item = function(item)
+        return string.format("%s:%s:%s", item.filename or "", item.lnum or "", item.col or "")
+      end,
+    }, function(item)
+      if item then
+        require("overlook.api").peek(item)
+      end
+    end)
+  end,
+})
+```
+
+```lua
+-- Peek somewhere you already know, without an LSP request.
+require("overlook.api").peek({
+  filename = "lua/overlook/api.lua",
+  lnum = 1,
+  col = 1,
+})
+```
+
+`peek_definition()`, `peek_cursor()`, and `peek_mark()` behave exactly as before.
 
 ## Writing a custom peek source
 
@@ -150,7 +190,7 @@ end
 vim.keymap.set("n", "<leader>pa", peek_alternate_file, { desc = "Peek alternate file" })
 ```
 
-Async sources (LSP, pickers) work the same way - they just call `open_popup` later from their own callback. See `:h overlook-peek` for the full contract and `overlook.peek.*` for the built-in examples.
+Async sources (LSP, pickers) work the same way - they just call `open_popup` later from their own callback. If the source already has an LSP location or a quickfix entry, `require("overlook.api").peek(item)` does the buffer lookup for you; see [Peek a specific location](#peek-a-specific-location). `:h overlook-peek` is the full contract, and `overlook.peek.*` holds the built-in examples.
 
 ## Development
 
